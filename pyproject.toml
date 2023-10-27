@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "emir"
+version = "0.0.1"
+authors = [
+    { name = "Maxime Darrin", email = "maxime.darrin@outlook.com"},
+    {name = "Philippe Formont", email = ""},
+]
+description = ""
+readme = "Readme.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = ""
+"Bug Tracker" = ""
