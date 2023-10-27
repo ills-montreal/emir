@@ -4,6 +4,7 @@
 
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
+.idea/*
 
 # IPython
 profile_default/
