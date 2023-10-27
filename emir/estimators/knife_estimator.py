@@ -4,54 +4,38 @@ from .knife import KNIFE
 from collections import namedtuple
 
 from typing import Tuple, List
+from dataclasses import dataclass, field
 
-
-# Create a namedtuple for the arguments
-KNIFEArgs = namedtuple(
-    typename="KNIFEArgs",
-    field_names=[
-        "batch_size",
-        "lr",
-        "device",
-        "n_epochs",
-        "average",
-        "cov_diagonal",
-        "cov_off_diagonal",
-        "optimize_mu",
-        "simu_params",
-        "cond_modes",
-        "marg_modes",
-        "use_tanh",
-        "init_std",
-        "ff_residual_connection",
-        "ff_activation",
-        "ff_layer_norm",
-        "ff_layers",
-    ],
-    defaults=[
-        16,  # batch_size
-        0.01,  # lr
-        "cpu",  # device
-        100,  # n_epochs
-        "var",  # average
-        "var",  # cov_diagonal
-        "var",  # cov_off_diagonal
-        False,  # optimize_mu
-        ["source_data", "target_data", "method", "optimize_mu"],  # simu_params
-        8,  # cond_modes
-        8,  # marg_modes
-        True,  # use_tanh
-        0.01,  # init_std
-        False,  # ff_residual_connection
-        "relu",  # ff_activation
-        True,  # ff_layer_norm
-        2,  # ff_layers
-    ],
-)
+@dataclass(frozen=True)
+class KnifeArgs:
+    batch_size: int = 16
+    lr: float = 0.01
+    device: str = "cpu"
+    n_epochs: int = 100
+    average: str = "var"
+    cov_diagonal: str = "var"
+    cov_off_diagonal: str = "var"
+    optimize_mu: bool = False
+    simu_params: List[str] = field(
+        default_factory=lambda: [
+            "source_data",
+            "target_data",
+            "method",
+            "optimize_mu",
+        ]
+    )
+    cond_modes: int = 8
+    marg_modes: int = 8
+    use_tanh: bool = True
+    init_std: float = 0.01
+    ff_residual_connection: bool = False
+    ff_activation: str = "relu"
+    ff_layer_norm: bool = True
+    ff_layers: int = 2
 
 
 class KNIFEEstimator:
-    def __init__(self, args: KNIFEArgs, x_dim: int, y_dim: int):
+    def __init__(self, args: KnifeArgs, x_dim: int, y_dim: int):
         """
 
         :param args:
@@ -76,7 +60,7 @@ class KNIFEEstimator:
         self.knife = KNIFE(self.args, self.x_dim, self.y_dim).to(self.args.device)
 
         # Fit the model
-        self.fit_estimator(x, y)
+        loss = self.fit_estimator(x, y)
 
         # Move model back to CPU
         self.knife = self.knife.to("cpu")
