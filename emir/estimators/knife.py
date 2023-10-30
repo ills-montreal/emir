@@ -34,6 +34,7 @@ class FF(nn.Module):
                              dim_output)
 
     def forward(self, x):
+        x = x.float()
         for layer in self.stack:
             x = x + layer(x) if self.residual_connection else layer(x)
         return self.out(x)
@@ -67,7 +68,7 @@ class MargKernel(nn.Module):
 
         self.optimize_mu = args.optimize_mu
         self.K = args.marg_modes if self.optimize_mu else args.batch_size
-        self.d = zc_dim
+        self.d = zd_dim
         self.use_tanh = args.use_tanh
         self.init_std = args.init_std
         super(MargKernel, self).__init__()
@@ -75,7 +76,7 @@ class MargKernel(nn.Module):
         self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)])
 
         if init_samples is None:
-            init_samples = self.init_std * torch.randn(self.K, self.d)
+            init_samples = self.init_std * torch.randn((self.K, self.d))
         # self.means = nn.Parameter(torch.rand(self.K, self.d), requires_grad=True)
         if self.optimize_mu:
             self.means = nn.Parameter(init_samples, requires_grad=True)  # [K, db]

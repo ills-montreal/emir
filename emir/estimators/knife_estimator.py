@@ -1,13 +1,19 @@
+import logging
 import torch
+from typing import Tuple, List, Optional
+from dataclasses import dataclass, field
+from collections import namedtuple
+from tqdm import tqdm
+
 
 from .knife import KNIFE
-from collections import namedtuple
 
-from typing import Tuple, List
-from dataclasses import dataclass, field
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 @dataclass(frozen=True)
-class KnifeArgs:
+class KNIFEArgs:
     batch_size: int = 16
     lr: float = 0.01
     device: str = "cpu"
@@ -35,7 +41,7 @@ class KnifeArgs:
 
 
 class KNIFEEstimator:
-    def __init__(self, args: KnifeArgs, x_dim: int, y_dim: int):
+    def __init__(self, args: KNIFEArgs, x_dim: int, y_dim: int):
         """
 
         :param args:
@@ -46,8 +52,11 @@ class KNIFEEstimator:
         self.args = args
         self.x_dim = x_dim
         self.y_dim = y_dim
+        self.recorded_loss: List[float] = []
 
-    def eval(self, x: torch.Tensor, y: torch.Tensor) -> Tuple[float, float, float]:
+    def eval(
+        self, x: torch.Tensor, y: torch.Tensor, record_loss: Optional[bool] = False
+    ) -> Tuple[float, float, float]:
         """
         Mutual information between x and y
 
@@ -60,7 +69,7 @@ class KNIFEEstimator:
         self.knife = KNIFE(self.args, self.x_dim, self.y_dim).to(self.args.device)
 
         # Fit the model
-        loss = self.fit_estimator(x, y)
+        self.fit_estimator(x, y, record_loss=record_loss)
 
         # Move model back to CPU
         self.knife = self.knife.to("cpu")
@@ -71,7 +80,7 @@ class KNIFEEstimator:
 
         return mutual_information.item(), marg_ent.item(), cond_ent.item()
 
-    def fit_estimator(self, x, y) -> List[float]:
+    def fit_estimator(self, x, y, record_loss: Optional[bool] = False) -> List[float]:
         """
         Fit the estimator to the data
         """
@@ -84,7 +93,10 @@ class KNIFEEstimator:
 
         losses = []
 
-        for epoch in range(self.args.n_epochs):
+        for epoch in tqdm(
+            range(self.args.n_epochs), desc="Knife training", leave=False
+        ):
+            epoch_loss = []
             for x_batch, y_batch in train_loader:
                 # move data to device
                 x_batch = x_batch.to(self.args.device)
@@ -95,8 +107,9 @@ class KNIFEEstimator:
                 loss.backward()
                 optimizer.step()
 
-                losses.append(loss.item())
+                if record_loss:
+                    epoch_loss.append(loss.item())
+            self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
+            logger.info("Epoch %d: loss = %f", epoch, loss.item())
 
         return losses
-
-
