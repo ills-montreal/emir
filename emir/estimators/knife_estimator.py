@@ -40,6 +40,7 @@ class KNIFEArgs:
     ff_layers: int = 2
 
 
+
 class KNIFEEstimator:
     def __init__(self, args: KNIFEArgs, x_dim: int, y_dim: int):
         """
@@ -109,7 +110,9 @@ class KNIFEEstimator:
 
                 if record_loss:
                     epoch_loss.append(loss.item())
-            self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
+
+            if record_loss:
+                self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
             logger.info("Epoch %d: loss = %f", epoch, loss.item())
 
         return losses
