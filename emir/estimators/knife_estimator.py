@@ -3,7 +3,7 @@ import torch
 from typing import Tuple, List, Optional
 from dataclasses import dataclass, field
 from collections import namedtuple
-from tqdm import tqdm
+from tqdm import trange, tqdm
 
 
 from .knife import KNIFE
