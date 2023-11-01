@@ -12,6 +12,7 @@ import datamol as dm
 import torch
 import numpy as np
 import pandas as pd
+import wandb
 
 from tqdm import tqdm
 
@@ -23,102 +24,36 @@ from utils import (
     get_molfeat_descriptors,
     get_molfeat_transformer,
 )
+from parser_mol import add_eval_cli_args, add_knife_args, generate_knife_config_from_args
 
 from emir.estimators import KNIFEEstimator, KNIFEArgs
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+handler = logging.StreamHandler()
 
 
-Knige_config = KNIFEArgs(
-    cond_modes=3,
-    marg_modes=3,
-    lr=0.01,
-    batch_size=128,
-    device="cpu",
-    n_epochs=30,
-    ff_layers=2,
-    cov_diagonal="var",
-    cov_off_diagonal="",
-)
+logger.info("Logger is set.")
 
 
-def add_eval_cli_args(parser: argparse.ArgumentParser):
-    """
-    Parser for the eval command line interface.
-    Will collect :
-        - The list of models to compare
-        - The list of descriptors to compare
-        - The dataset to use
-    :param parser: argparse.ArgumentParser
-    :return: argparse.ArgumentParser
-    """
-    parser.add_argument(
-        "--models",
-        type=str,
-        nargs="+",
-        default=["GraphMVP", "GROVER"],
-        help="List of models to compare",
-    )
-
-    parser.add_argument(
-        "--descriptors",
-        type=str,
-        nargs="+",
-        default=["ecfp", "erg", "topological", "scaffoldkeys", "cats", "default"],
-        help="List of descriptors to compare",
-    )
-
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        default="hERG_Karim",
-        help="Dataset to use",
-    )
-
-    parser.add_argument(
-        "--out_file",
-        type=str,
-        default="results.csv",
-        help="Output file",
-    )
-
-    return parser
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser = add_eval_cli_args(parser)
-    args = parser.parse_args()
-    try:
-        df = Tox(name=args.dataset).get_data()
-    except ValueError as e:
-        label_list = retrieve_label_name_list('Tox21')
-        df = Tox(name=args.dataset, label_name=label_list[0]).get_data()
-
-    logger.info(f"Dataset {args.dataset} loaded, with {len(df)} datapoints")
-    smiles = df["Drug"].tolist()
-
-    dataloader = DataLoader(
-        [mol_to_graph_data_obj_simple(dm.to_mol(s)) for s in smiles],
-        batch_size=32,
-        shuffle=False,
-    )
-    embeddings_fn = get_embedders(args)
-    results = []
-    p_bar = tqdm(total=len(args.models) * len(args.descriptors), desc="Models", position=0)
-
-    for model_name in args.models:
-        results.append(
-            model_profile(
-                embeddings_fn, model_name, args.descriptors, dataloader, smiles, p_bar = p_bar
-            )
-        )
-    results = pd.concat(results)
-    results.to_csv(args.out_file, index=False)
+def precompute_3d(smiles: List[str]):
+    mols = [
+        dm.conformers.generate(dm.to_mol(s), align_conformers=True, n_confs=5)
+        for s in tqdm(smiles, desc="Generating conformers")
+    ]
+    # Removing molecules that cannot be featurized
+    transformer, thrD = get_molfeat_transformer("usr")
+    feat, valid_id = transformer(mols, ignore_errors=True)
+    smiles = np.array(smiles)[valid_id]
+    mols = np.array(mols)[valid_id]
+    return mols, smiles
 
 
 def get_embedders(args: argparse.Namespace):
@@ -138,7 +73,7 @@ def get_embedders(args: argparse.Namespace):
         embeddings_fn[model_name] = partial(get_embeddings_from_model, path=model_path)
     for method in args.descriptors:
         embeddings_fn[method] = partial(
-            get_molfeat_descriptors, transformer_name=method
+            get_molfeat_descriptors, transformer_name=method, length=args.fp_length
         )
     return embeddings_fn
 
@@ -151,6 +86,7 @@ def model_profile(
     smiles: List[str],
     mols: List[dm.Mol] = None,
     p_bar: tqdm = None,
+    knife_config: KNIFEArgs = None,
 ):
     results = {
         "desc1": [],
@@ -159,7 +95,12 @@ def model_profile(
     }
     for desc in descriptors:
         mi, _, _, _ = get_knife_preds(
-            embeddings_fn[model_name], embeddings_fn[desc], dataloader, smiles, mols
+            embeddings_fn[model_name],
+            embeddings_fn[desc],
+            dataloader,
+            smiles,
+            mols,
+            knife_config=knife_config,
         )
         results["desc1"].append(model_name)
         results["desc2"].append(desc)
@@ -175,13 +116,83 @@ def get_knife_preds(
     dataloader: DataLoader,
     smiles: List[str],
     mols: List[dm.Mol] = None,
+    knife_config: KNIFEArgs = None,
 ) -> Tuple[float, float, float, List[float]]:
     x1 = emb_fn1(dataloader, smiles, mols=mols)
     x2 = emb_fn2(dataloader, smiles, mols=mols)
-    knife_estimator = KNIFEEstimator(Knige_config, x1.shape[1], x2.shape[1])
+    knife_estimator = KNIFEEstimator(
+        knife_config, x1.shape[1], x2.shape[1]
+    )  # Learn x2 from x1
     mi, m, c = knife_estimator.eval(x1.float(), x2.float(), record_loss=True)
     return mi, m, c, knife_estimator.recorded_loss
 
 
+def main():
+    parser = argparse.ArgumentParser(
+        description="",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser = add_eval_cli_args(parser)
+    parser = add_knife_args(parser)
+    args = parser.parse_args()
+    try:
+        df = Tox(name=args.dataset).get_data()
+    except ValueError as e:
+        label_list = retrieve_label_name_list(args.dataset)
+        df = Tox(name=args.dataset, label_name=label_list[0]).get_data()
+
+    smiles = df["Drug"].tolist()
+    mols = None
+    if args.precompute_3d:
+        mols, smiles = precompute_3d(smiles)
+
+    knife_config = generate_knife_config_from_args(args)
+
+    logger.info(f"Dataset {args.dataset} loaded, with {len(smiles)} datapoints")
+
+    dataloader = DataLoader(
+        [mol_to_graph_data_obj_simple(dm.to_mol(s)) for s in smiles],
+        batch_size=32,
+        shuffle=False,
+    )
+    embeddings_fn = get_embedders(args)
+    results = []
+    p_bar = tqdm(
+        total=len(args.models) * len(args.descriptors), desc="Models", position=0
+    )
+
+    for model_name in args.models:
+        results.append(
+            model_profile(
+                embeddings_fn,
+                model_name,
+                args.descriptors,
+                dataloader,
+                smiles,
+                mols=mols,
+                p_bar=p_bar,
+                knife_config=knife_config,
+            )
+        )
+    results = pd.concat(results)
+    results.to_csv(args.out_file, index=False)
+    return results
+
+
 if __name__ == "__main__":
-    main()
+    wandb.init(project="Emir")
+    df = main()
+    max_desc = df.groupby("desc2").mi.max()
+    df["mi_normed"] = df.apply(lambda x: x.mi / max_desc[x.desc2], axis=1)
+
+    wandb.log(
+        {
+            "inter_model_std": df.groupby("desc2").mi.std().mean(),
+            "intra_model_std": df.groupby("desc1").mi.std().mean(),
+            "inter_model_std_normalized": df.groupby("desc2").mi_normed.std().mean(),
+            "intra_model_std_normalized": df.groupby("desc1").mi_normed.std().mean(),
+        }
+    )
+
+    wandb.log({"results": wandb.Table(dataframe=df)})
+    wandb.finish()
