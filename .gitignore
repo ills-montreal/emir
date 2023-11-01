@@ -177,5 +177,5 @@ cython_debug/
 
 
 # Molecular Models
-molecule/backbone_pretrained_models
-
+molecule/backbone_pretrained_models/*
+molecule/data/*
