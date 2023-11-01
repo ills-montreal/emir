@@ -38,7 +38,7 @@ def parse_args():
     return args
 
 # write command example
-# python EMIR/scripts/summarization_evaluation/generate_summaries.sh.py --model_name facebook/bart-large-cnn --dataset_name rotten_tomatoes --dataset_path data/datasets --decoding_config top_p_sampling --batch_size 16 --device cuda --output_dir output
+# python EMIR/summarization/summarization_evaluation/generate_summaries.sh.py --model_name facebook/bart-large-cnn --dataset_name rotten_tomatoes --dataset_path data/datasets --decoding_config top_p_sampling --batch_size 16 --device cuda --output_dir output
 
 
 def load_dataset(dataset_name, dataset_path=None) -> Dataset:
