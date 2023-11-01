@@ -96,9 +96,7 @@ class KNIFEEstimator:
 
         losses = []
 
-        for epoch in tqdm(
-            range(self.args.n_epochs), desc="Knife training", leave=False
-        ):
+        for epoch in trange(self.args.n_epochs, position=1, desc="Knife training"):
             epoch_loss = []
             for x_batch, y_batch in train_loader:
                 # move data to device

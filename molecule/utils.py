@@ -49,7 +49,7 @@ def get_embeddings_from_model(
     mols: Optional[List[dm.Mol]] = None,
     path: str = "backbone_pretrained_models/GROVER/grover.pth",
     pooling_method=tgp.global_mean_pool,
-    normalize: bool = True,
+    normalize: bool = False,
 ):
     embeddings = []
     molecule_model = GNN(**MODEL_PARAMS)
@@ -65,29 +65,32 @@ def get_embeddings_from_model(
     return embeddings
 
 
-def get_molfeat_transformer(transformer_name: str):
+def get_molfeat_transformer(transformer_name: str, length: int = 1024):
     if transformer_name in fpvec_method or transformer_name in threeD_method_fpvec:
         if transformer_name in threeD_method_fpvec:
             return (
                 FPVecTransformer(
                     kind=transformer_name,
                     dtype=float,
+                    length=length,
                 ),
                 True,
             )
         return (
-            FPVecTransformer(kind=transformer_name, dtype=float, length=1024),
+            FPVecTransformer(kind=transformer_name, dtype=float, length=length),
             False,
         )
     elif transformer_name in moleculetransf_method:
         return (
-            MoleculeTransformer(featurizer=transformer_name, dtype=float),
+            MoleculeTransformer(
+                featurizer=transformer_name, dtype=float, length=length
+            ),
             False,
         )
     elif transformer_name in pharmac_method:
         return (
             MoleculeTransformer(
-                featurizer=Pharmacophore2D(factory=transformer_name),
+                featurizer=Pharmacophore2D(factory=transformer_name, length=length),
                 dtype=float,
             ),
             False,
@@ -96,27 +99,50 @@ def get_molfeat_transformer(transformer_name: str):
         raise ValueError(f"Invalid transformer name: {transformer_name}")
 
 
+def physchem_descriptors(
+    dataloader: DataLoader,
+    smiles: List[str],
+    mols: Optional[List[dm.Mol]] = None,
+    length: int = 1024,
+):
+    mols = [dm.to_mol(s) for s in smiles]
+    df_descriptors = dm.descriptors.batch_compute_many_descriptors(mols)
+    df_descriptors = df_descriptors.fillna(0)
+    df_descriptors = torch.tensor(df_descriptors.astype(np.float32).to_numpy())
+    df_descriptors = (df_descriptors - df_descriptors.mean(dim=0, keepdim=True)) / (
+        df_descriptors.std(dim=0, keepdim=True) + 1e-6
+    )
+    return df_descriptors
+
+
 def get_molfeat_descriptors(
     dataloader: DataLoader,
     smiles: List[str],
     transformer_name: str,
     mols: Optional[List[dm.Mol]] = None,
-    normalize: bool = True,
+    normalize: bool = False,
+    length: int = 1024,
 ):
     """
     Returns a list of descriptors for a given smiles string, obtained by using Molfeat's FPVecTransformer.
     """
-    transformer, threeD = get_molfeat_transformer(transformer_name)
 
-    if threeD and mols is None:
-        mols = [
-            dm.conformers.generate(dm.to_mol(s), align_conformers=True, n_confs=5)
-            for s in tqdm(smiles, desc="Generating conformers")
-        ]
-    if threeD:
-        molecular_embeddings = torch.tensor(transformer(mols, progress=True))
+    if transformer_name == "physchem":
+        molecular_embeddings = physchem_descriptors(
+            dataloader, smiles, mols=mols, length=length
+        )
     else:
-        molecular_embeddings = torch.tensor(transformer(smiles, progress=True))
+        transformer, threeD = get_molfeat_transformer(transformer_name, length=length)
+
+        if threeD and mols is None:
+            mols = [
+                dm.conformers.generate(dm.to_mol(s), align_conformers=True, n_confs=5)
+                for s in tqdm(smiles, desc="Generating conformers")
+            ]
+        if threeD:
+            molecular_embeddings = torch.tensor(transformer(mols, progress=True))
+        else:
+            molecular_embeddings = torch.tensor(transformer(smiles, progress=True))
     if normalize:
         molecular_embeddings = torch.nn.functional.normalize(
             molecular_embeddings, dim=1
