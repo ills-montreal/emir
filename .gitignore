@@ -180,3 +180,5 @@ cython_debug/
 # Molecular Models
 molecule/backbone_pretrained_models/*
 molecule/data/*
+molecule/results.csv
+*wandb*

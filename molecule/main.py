@@ -94,7 +94,7 @@ def model_profile(
         "mi": [],
     }
     for desc in descriptors:
-        mi, _, _, _ = get_knife_preds(
+        mi, _, _, loss = get_knife_preds(
             embeddings_fn[model_name],
             embeddings_fn[desc],
             dataloader,
