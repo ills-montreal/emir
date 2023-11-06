@@ -1,0 +1,26 @@
+program: main.py
+method: bayes
+metric:
+  name: inter_model_std_normalized
+  goal: maximize
+parameters:
+  cond-modes:
+    values: [1,2,3,4,5,6,7,8,9,10,11,12]
+  marg-modes:
+    values: [1,2,3,4,5,6,7,8,9,10,11,12]
+  ff-layers:
+    values: [1,2,3,4]
+  cov-diagonal:
+    values: ["var"]
+  ff-residual-connection:
+    values: ["true","false"]
+  use-tanh:
+    values: ["true","false"]
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - --dataset
+  - hERG_Karim
+  - ${args}
+
