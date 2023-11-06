@@ -67,7 +67,7 @@ def get_embedders(args: argparse.Namespace):
                 # If the file is a .pth file
                 if file_name.endswith(".pth"):
                     MODELS[model_name] = os.path.join(MODEL_PATH, model_name, file_name)
-
+    MODELS["Not-trained"] = ""
     embeddings_fn = {}
     for model_name, model_path in MODELS.items():
         embeddings_fn[model_name] = partial(get_embeddings_from_model, path=model_path)
@@ -95,8 +95,8 @@ def model_profile(
     }
     for desc in descriptors:
         mi, _, _, loss = get_knife_preds(
-            embeddings_fn[model_name],
             embeddings_fn[desc],
+            embeddings_fn[model_name],
             dataloader,
             smiles,
             mols,
