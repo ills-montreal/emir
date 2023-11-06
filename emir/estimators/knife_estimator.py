@@ -117,10 +117,6 @@ class KNIFEEstimator:
             self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
             logger.info("Epoch %d: loss = %f", epoch, loss.item())
 
-            # Stopping criterion
-            if epoch >= self.args.n_epochs - 1:
-                logger.info("Reached max number of epochs (%d)", self.args.n_epochs)
-                break
             if self.args.stopping_criterion == "early_stopping":
                 if (
                     epoch > 0
@@ -129,6 +125,5 @@ class KNIFEEstimator:
                 ):
                     logger.info("Reached early stopping criterion")
                     break
-
 
         return losses
