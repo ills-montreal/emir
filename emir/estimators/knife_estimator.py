@@ -1,9 +1,9 @@
 import logging
 from dataclasses import dataclass, field
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Literal
 
 import torch
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 from .knife import KNIFE
 
@@ -17,9 +17,11 @@ class KNIFEArgs:
     lr: float = 0.01
     device: str = "cpu"
 
-    stopping_criterion: str = "max_epochs"  # "max_epochs" or "early_stopping"
+    stopping_criterion: Literal[
+        "max_epochs", "early_stopping"
+    ] = "max_epochs"  # "max_epochs" or "early_stopping"
     n_epochs: int = 100
-    eps: float = 1e-6
+    eps: float = 1e-3
 
     average: str = "var"
     cov_diagonal: str = "var"
@@ -96,9 +98,7 @@ class KNIFEEstimator:
 
         losses = []
 
-        for epoch in tqdm(
-            range(self.args.n_epochs), desc="Knife training", leave=False
-        ):
+        for epoch in trange(self.args.n_epochs, position=1, desc="Knife training"):
             epoch_loss = []
             for x_batch, y_batch in train_loader:
                 # move data to device

@@ -232,7 +232,6 @@ class GNN(nn.Module):
             self.batch_norms.append(nn.BatchNorm1d(emb_dim))
 
     def forward_embeddings(self, x, edge_index, edge_attr):
-
         h_list = [x]
         for layer in range(self.num_layer):
             h = self.gnns[layer](h_list[layer], edge_index, edge_attr)
@@ -274,7 +273,6 @@ class GNN(nn.Module):
         return self.forward_embeddings(x, edge_index, edge_attr)
 
 
-
 class GNN_graphpred(nn.Module):
     def __init__(self, args, num_tasks, molecule_model=None):
         super(GNN_graphpred, self).__init__()
@@ -310,6 +308,8 @@ class GNN_graphpred(nn.Module):
         return
 
     def from_pretrained(self, model_file):
+        if model_file == "":
+            return
         self.molecule_model.load_state_dict(torch.load(model_file))
         return
 
@@ -352,4 +352,3 @@ class GNN_graphpred(nn.Module):
         output = self.graph_pred_linear(graph_representation)
 
         return output
-
