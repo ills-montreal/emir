@@ -17,9 +17,11 @@ class KNIFEArgs:
     lr: float = 0.01
     device: str = "cpu"
 
-    stopping_criterion: str = "max_epochs"  # "max_epochs" or "early_stopping"
+    stopping_criterion: Literal[
+        "max_epochs", "early_stopping"
+    ] = "max_epochs"  # "max_epochs" or "early_stopping"
     n_epochs: int = 100
-    eps: float = 1e-6
+    eps: float = 1e-3
 
     average: str = "var"
     cov_diagonal: str = "var"
