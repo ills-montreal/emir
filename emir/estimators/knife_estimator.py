@@ -1,10 +1,9 @@
 import logging
-import torch
-from typing import Tuple, List, Optional
 from dataclasses import dataclass, field
-from collections import namedtuple
-from tqdm import trange, tqdm
+from typing import Tuple, List, Optional
 
+import torch
+from tqdm import tqdm
 
 from .knife import KNIFE
 
@@ -17,7 +16,11 @@ class KNIFEArgs:
     batch_size: int = 16
     lr: float = 0.01
     device: str = "cpu"
+
+    stopping_criterion: str = "max_epochs"  # "max_epochs" or "early_stopping"
     n_epochs: int = 100
+    eps: float = 1e-6
+
     average: str = "var"
     cov_diagonal: str = "var"
     cov_off_diagonal: str = "var"
@@ -38,7 +41,6 @@ class KNIFEArgs:
     ff_activation: str = "relu"
     ff_layer_norm: bool = True
     ff_layers: int = 2
-
 
 
 class KNIFEEstimator:
@@ -108,11 +110,20 @@ class KNIFEEstimator:
                 loss.backward()
                 optimizer.step()
 
-                if record_loss:
-                    epoch_loss.append(loss.item())
+                losses.append(loss.item())
 
-            if record_loss:
-                self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
+                epoch_loss.append(loss.item())
+
+            self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
             logger.info("Epoch %d: loss = %f", epoch, loss.item())
+
+            if self.args.stopping_criterion == "early_stopping":
+                if (
+                    epoch > 0
+                    and abs(self.recorded_loss[-1] - self.recorded_loss[-2])
+                    < self.args.eps
+                ):
+                    logger.info("Reached early stopping criterion")
+                    break
 
         return losses

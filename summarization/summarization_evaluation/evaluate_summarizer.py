@@ -21,6 +21,11 @@ def parse_args():
 
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--n_epochs", type=int, default=200)
+
+    # stoping criterion
+    parser.add_argument("--stopping_criterion", type=str, default="max_epochs")  # "max_epochs" or "early_stopping"
+    parser.add_argument("--eps", type=float, default=1e-6)
+
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--average", type=str, default="")
@@ -126,23 +131,35 @@ def main():
         summary_embeddings, text_embeddings, args.device, args
     )
 
+    # Retrive metadata from stem
+    metadata = args.summaries.stem.split("-_-")
+    model_name, dataset_name, decoding_config, date = metadata
+
     # make a pandas dataframe, use summaries filename as index
 
     df = pd.DataFrame(
         {
+            "filename" : [args.summaries.stem],
+            "metadata/Embedding model" : [args.model],
+            "metadata/Decoding config" : [decoding_config],
+            "metadata/Date" : [date],
+            "metadata/Model name" : [model_name],
+            "metadata/Dataset name" : [dataset_name],
+
             "I(text -> summary)": [mi],
-            "marg_ent": [marg_ent],
-            "cond_ent": [cond_ent],
+            "H(summary)": [marg_ent],
+            "H(summary|text)": [cond_ent],
             "I(summary -> text)": [mi_rev],
-            "marg_ent_rev": [marg_ent_rev],
-            "cond_ent_rev": [cond_ent_rev],
-        }
+            "H(text)": [marg_ent_rev],
+            "H(test|summary)": [cond_ent_rev],
+        },
     )
-    df.index = [args.summaries.stem]
+
+    df = df.set_index("filename")
 
     # save the dataframe
 
-    path = Path(args.output) / f"{args.summaries.stem}_mi.csv"
+    path = Path(args.output) / f"{args.summaries.stem}_metrics.csv"
     # create the output directory if it does not exist
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path)
