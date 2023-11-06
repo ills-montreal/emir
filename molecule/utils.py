@@ -53,7 +53,8 @@ def get_embeddings_from_model(
 ):
     embeddings = []
     molecule_model = GNN(**MODEL_PARAMS)
-    molecule_model.load_state_dict(torch.load(path))
+    if not path == "":
+        molecule_model.load_state_dict(torch.load(path))
     for b in dataloader:
         embeddings.append(
             torch.nn.functional.normalize(

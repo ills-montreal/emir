@@ -16,7 +16,18 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         "--models",
         type=str,
         nargs="+",
-        default=["GraphMVP", "GROVER"],
+        default=[
+            "Not-trained",
+            "GraphMVP",
+            "GROVER",
+            "AttributeMask",
+            "ContextPred",
+            "EdgePred",
+            "GPT-GNN",
+            "GraphCL",
+            "GraphLog",
+            "InfoGraph",
+        ],
         help="List of models to compare",
     )
 
@@ -25,10 +36,14 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         default=[
-            "physchem",
+            "ecfp-count",
             "ecfp",
+            "estate",
             "erg",
+            "rdkit",
             "topological",
+            "avalon",
+            "maccs",
             "scaffoldkeys",
             "cats",
             "default",
@@ -80,6 +95,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--optimize-mu", type=str, default="false")
     parser.add_argument("--ff-residual-connection", type=str, default="false")
     parser.add_argument("--use-tanh", type=str, default="true")
+    parser.add_argument("--stopping-criterion", type=str, default="early_stopping")
     return parser
 
 

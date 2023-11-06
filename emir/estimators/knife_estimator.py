@@ -1,9 +1,9 @@
 import logging
 from dataclasses import dataclass, field
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Literal
 
 import torch
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 from .knife import KNIFE
 
