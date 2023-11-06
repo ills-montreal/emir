@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 from torch.utils.data import DataLoader
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 from tqdm import tqdm
 import datetime
 
@@ -14,7 +14,29 @@ GENERATION_CONFIGS = {
         "max_new_tokens": 100,
         "do_sample": True,
         "top_p": 0.95,
-    }
+    },
+    "beam_sampling_short": {
+        "max_new_tokens": 5,
+        "do_sample": True,
+        "num_beams": 3,
+        "top_p": 0.95,
+    },
+    "beam_sampling_long": {
+        "max_new_tokens": 200,
+        "do_sample": True,
+        "num_beams": 3,
+        "top_p": 0.95,
+    },
+    "beam_search_long": {
+        "max_new_tokens": 200,
+        "do_sample": False,
+        "num_beams": 3,
+    },
+    "beam_search_short": {
+        "max_new_tokens": 5,
+        "do_sample": False,
+        "num_beams": 3,
+    },
 }
 
 
@@ -37,16 +59,14 @@ def parse_args():
 
     return args
 
+
 # write command example
 # python EMIR/summarization/summarization_evaluation/generate_summaries.sh.py --model_name facebook/bart-large-cnn --dataset_name rotten_tomatoes --dataset_path data/datasets --decoding_config top_p_sampling --batch_size 16 --device cuda --output_dir output
 
 
-def load_dataset(dataset_name, dataset_path=None) -> Dataset:
+def prepare_dataset(dataset_name, dataset_path=None) -> Dataset:
     if dataset_name == "rotten_tomatoes":
-        path = (
-            Path(dataset_path)
-            / "rotten_tomatoes_critic_reviews.csv"
-        )
+        path = Path(dataset_path) / "rotten_tomatoes_critic_reviews.csv"
         dataset = pd.read_csv(path)
 
         # get rotten_tomatoes_link as id, review_content as text and review_score as sentiment
@@ -71,6 +91,35 @@ def load_dataset(dataset_name, dataset_path=None) -> Dataset:
         # rename review to text
         dataset = dataset.rename(columns={"review": "text"})
 
+    elif dataset_name == "xsum":
+        dataset = load_dataset("EdinburghNLP/xsum")
+        test = dataset["test"]
+        # rename document to text
+        test = test.rename_column("document", "text")
+        # rename summary to gold_summary
+        test = test.rename_column("summary", "gold_summary")
+        dataset = test.to_pandas()
+
+    # cnn dailymail
+    elif dataset_name == "cnn_dailymail":
+        dataset = load_dataset("cnn_dailymail", '3.0.0')
+        test = dataset["test"]
+        # rename article to text
+        test = test.rename_column("article", "text")
+        # rename highlights to gold_summary
+        test = test.rename_column("highlights", "gold_summary")
+
+        dataset = test.to_pandas()
+
+    elif dataset_name == "arxiv":
+        dataset = load_dataset("scientific_papers", "arxiv")
+        test = dataset["test"]
+        # rename article to text
+        test = test.rename_column("article", "text")
+        # rename abstract to gold_summary
+        test = test.rename_column("abstract", "gold_summary")
+
+        dataset = test.to_pandas()
     else:
         raise ValueError(f"Dataset {dataset_name} not supported.")
 
@@ -155,10 +204,9 @@ def main():
     # move model to device
     model = model.to(args.device)
 
-
     # load the dataset
     print("Loading dataset...")
-    dataset = load_dataset(args.dataset_name, args.dataset_path)
+    dataset = prepare_dataset(args.dataset_name, args.dataset_path)
 
     # limit the number of samples
     if args.limit is not None:
@@ -181,7 +229,7 @@ def main():
     model_name = sanitize_model_name(args.model_name)
     output_path = (
         Path(args.output_dir)
-        / f"{model_name}_{args.dataset_name}_{args.decoding_config}_{date}.csv"
+        / f"{model_name}-_-{args.dataset_name}-_-{args.decoding_config}-_-{date}.csv"
     )
 
     # create output dir if it doesn't exist
