@@ -118,11 +118,10 @@ class KNIFEEstimator:
             logger.info("Epoch %d: loss = %f", epoch, loss.item())
 
             # Stopping criterion
-            if self.args.stopping_criterion == "max_epochs":
-                if epoch == self.args.n_epochs - 1:
-                    logger.info("Reached max number of epochs (%d)", self.args.n_epochs)
-                    break
-            elif self.args.stopping_criterion == "early_stopping":
+            if epoch >= self.args.n_epochs - 1:
+                logger.info("Reached max number of epochs (%d)", self.args.n_epochs)
+                break
+            if self.args.stopping_criterion == "early_stopping":
                 if (
                     epoch > 0
                     and abs(self.recorded_loss[-1] - self.recorded_loss[-2])
@@ -130,9 +129,6 @@ class KNIFEEstimator:
                 ):
                     logger.info("Reached early stopping criterion")
                     break
-            else:
-                raise ValueError(
-                    f"Unknown stopping criterion {self.args.stopping_criterion}"
-                )
+
 
         return losses
