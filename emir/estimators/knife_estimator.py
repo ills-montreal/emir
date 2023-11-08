@@ -98,7 +98,7 @@ class KNIFEEstimator:
 
         losses = []
 
-        for epoch in trange(self.args.n_epochs, position=1, desc="Knife training"):
+        for epoch in trange(self.args.n_epochs, position=-1, desc="Knife training", leave=False):
             epoch_loss = []
             for x_batch, y_batch in train_loader:
                 # move data to device

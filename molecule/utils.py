@@ -43,7 +43,7 @@ pharmac_method = ["cats", "default", "gobbi", "pmapper"]
 
 
 @torch.no_grad()
-def get_embeddings_from_model(
+def get_embeddings_from_model_moleculenet(
     dataloader: DataLoader,
     smiles: List[str],
     mols: Optional[List[dm.Mol]] = None,
