@@ -20,11 +20,16 @@ from torch_geometric.data import DataLoader
 
 from moleculenet_encoding import mol_to_graph_data_obj_simple
 from utils import (
-    get_embeddings_from_model,
+    get_embeddings_from_model_moleculenet,
+    get_embeddings_from_transformers,
     get_molfeat_descriptors,
     get_molfeat_transformer,
 )
-from parser_mol import add_eval_cli_args, add_knife_args, generate_knife_config_from_args
+from parser_mol import (
+    add_eval_cli_args,
+    add_knife_args,
+    generate_knife_config_from_args,
+)
 
 from emir.estimators import KNIFEEstimator, KNIFEArgs
 
@@ -45,7 +50,7 @@ logger.info("Logger is set.")
 
 def precompute_3d(smiles: List[str]):
     mols = [
-        dm.conformers.generate(dm.to_mol(s), align_conformers=True, n_confs=5)
+        dm.conformers.generate(dm.to_mol(s), align_conformers=True, n_confs=5, ignore_failure=True)
         for s in tqdm(smiles, desc="Generating conformers")
     ]
     # Removing molecules that cannot be featurized
@@ -87,6 +92,7 @@ def model_profile(
     mols: List[dm.Mol] = None,
     p_bar: tqdm = None,
     knife_config: KNIFEArgs = None,
+    n_runs: int = 1,
 ):
     results = {
         "desc1": [],
@@ -94,17 +100,19 @@ def model_profile(
         "mi": [],
     }
     for desc in descriptors:
-        mi, _, _, loss = get_knife_preds(
-            embeddings_fn[desc],
-            embeddings_fn[model_name],
-            dataloader,
-            smiles,
-            mols,
-            knife_config=knife_config,
-        )
-        results["desc1"].append(model_name)
-        results["desc2"].append(desc)
-        results["mi"].append(mi)
+        mis = []
+        for _ in range(n_runs):
+            mi, _, _, loss = get_knife_preds(
+                embeddings_fn[desc],
+                embeddings_fn[model_name],
+                dataloader,
+                smiles,
+                mols,
+                knife_config=knife_config,
+            )
+            results["desc1"].append(model_name)
+            results["desc2"].append(desc)
+            results["mi"].append(mi)
         if p_bar is not None:
             p_bar.update(1)
     return pd.DataFrame(results)
@@ -172,6 +180,7 @@ def main():
                 mols=mols,
                 p_bar=p_bar,
                 knife_config=knife_config,
+                n_runs=args.n_runs,
             )
         )
     results = pd.concat(results)

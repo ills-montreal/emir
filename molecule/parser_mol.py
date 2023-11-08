@@ -12,6 +12,8 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     :param parser: argparse.ArgumentParser
     :return: argparse.ArgumentParser
     """
+    parser.add_argument("--n-runs", type=int, default=1)
+
     parser.add_argument(
         "--models",
         type=str,
@@ -36,6 +38,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         default=[
+            "physchem",
             "ecfp-count",
             "ecfp",
             "estate",
@@ -47,6 +50,11 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "scaffoldkeys",
             "cats",
             "default",
+            "gobbi",
+            "pmapper",
+            "usrcat",
+            "electroshape",
+            "usr",
         ],
         help="List of descriptors to compare",
     )
