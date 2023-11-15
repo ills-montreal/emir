@@ -30,7 +30,8 @@ from parser_mol import (
     add_knife_args,
     generate_knife_config_from_args,
 )
-
+from precompute_3d import precompute_3d
+from tdc_dataset import get_dataset
 from emir.estimators import KNIFEEstimator, KNIFEArgs
 
 logger = logging.getLogger(__name__)
@@ -48,19 +49,6 @@ handler = logging.StreamHandler()
 logger.info("Logger is set.")
 
 
-def precompute_3d(smiles: List[str]):
-    mols = [
-        dm.conformers.generate(dm.to_mol(s), align_conformers=True, n_confs=5, ignore_failure=True)
-        for s in tqdm(smiles, desc="Generating conformers")
-    ]
-    # Removing molecules that cannot be featurized
-    transformer, thrD = get_molfeat_transformer("usr")
-    feat, valid_id = transformer(mols, ignore_errors=True)
-    smiles = np.array(smiles)[valid_id]
-    mols = np.array(mols)[valid_id]
-    return mols, smiles
-
-
 def get_embedders(args: argparse.Namespace):
     MODEL_PATH = "backbone_pretrained_models"
     MODELS = {}
@@ -75,34 +63,46 @@ def get_embedders(args: argparse.Namespace):
     MODELS["Not-trained"] = ""
     embeddings_fn = {}
     for model_name, model_path in MODELS.items():
-        embeddings_fn[model_name] = partial(get_embeddings_from_model, path=model_path)
+        embeddings_fn[model_name] = partial(
+            get_embeddings_from_model_moleculenet, path=model_path
+        )
     for method in args.descriptors:
         embeddings_fn[method] = partial(
             get_molfeat_descriptors, transformer_name=method, length=args.fp_length
         )
+    for model_name in args.models:
+        if not model_name in embeddings_fn:
+            embeddings_fn[model_name] = partial(
+                get_embeddings_from_transformers, transformer_name=model_name
+            )
+
     return embeddings_fn
 
 
 def model_profile(
-    embeddings_fn: Dict[str, callable],
+    args: argparse.Namespace,
     model_name: str,
-    descriptors: List[str],
     dataloader: DataLoader,
     smiles: List[str],
     mols: List[dm.Mol] = None,
     p_bar: tqdm = None,
-    knife_config: KNIFEArgs = None,
-    n_runs: int = 1,
 ):
+    knife_config = generate_knife_config_from_args(args)
+    embeddings_fn = get_embedders(args)
     results = {
-        "desc1": [],
-        "desc2": [],
-        "mi": [],
+        "X": [],
+        "Y": [],
+        "I(Y)": [],
+        "I(Y|X)": [],
+        "I(X->Y)": [],
+        "I(X)": [],  # Not possible yet
+        "I(X|Y)": [],  # Not possible yet
+        "I(Y->X)": [],  # Not possible yet
     }
-    for desc in descriptors:
+    for desc in args.descriptors:
         mis = []
-        for _ in range(n_runs):
-            mi, _, _, loss = get_knife_preds(
+        for _ in range(args.n_runs):
+            mi, m, c, loss = get_knife_preds(
                 embeddings_fn[desc],
                 embeddings_fn[model_name],
                 dataloader,
@@ -110,9 +110,29 @@ def model_profile(
                 mols,
                 knife_config=knife_config,
             )
-            results["desc1"].append(model_name)
-            results["desc2"].append(desc)
-            results["mi"].append(mi)
+            results["Y"].append(model_name)
+            results["X"].append(desc)
+            results["I(Y)"].append(m)
+            results["I(Y|X)"].append(c)
+            results["I(X->Y)"].append(mi)
+
+            if args.compute_both_mi:
+                mi, m, c, loss = get_knife_preds(
+                    embeddings_fn[model_name],
+                    embeddings_fn[desc],
+                    dataloader,
+                    smiles,
+                    mols,
+                    knife_config=knife_config,
+                )
+                results["I(X)"].append(m)
+                results["I(X|Y)"].append(c)
+                results["I(Y->X)"].append(mi)
+            else:
+                results["I(Y)"].append(np.nan)
+                results["I(Y|X)"].append(np.nan)
+                results["I(X->Y)"].append(np.nan)
+
         if p_bar is not None:
             p_bar.update(1)
     return pd.DataFrame(results)
@@ -143,56 +163,65 @@ def main():
     parser = add_eval_cli_args(parser)
     parser = add_knife_args(parser)
     args = parser.parse_args()
-    try:
-        df = Tox(name=args.dataset).get_data()
-    except ValueError as e:
-        label_list = retrieve_label_name_list(args.dataset)
-        df = Tox(name=args.dataset, label_name=label_list[0]).get_data()
+
+    df = get_dataset(args.dataset)
 
     smiles = df["Drug"].tolist()
     mols = None
     if args.precompute_3d:
-        mols, smiles = precompute_3d(smiles)
-
-    knife_config = generate_knife_config_from_args(args)
+        mols, smiles = precompute_3d(smiles, args.dataset)
+        # Removing molecules that cannot be featurized
+        for t_name in ["usr", "electroshape", "usrcat"]:
+            transformer, thrD = get_molfeat_transformer(t_name)
+            feat, valid_id = transformer(mols, ignore_errors=True)
+            smiles = np.array(smiles)[valid_id]
+            mols = np.array(mols)[valid_id]
 
     logger.info(f"Dataset {args.dataset} loaded, with {len(smiles)} datapoints")
+    graph_input = []
+    valid_smiles = []
+    valid_mols = []
+    for i, s in enumerate(tqdm(smiles, desc="Generating graphs")):
+        try:
+            graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)))
+            valid_smiles.append(s)
+            valid_mols.append(mols[i])
+        except:
+            pass
+    smiles = valid_smiles
+    mols = valid_mols
 
     dataloader = DataLoader(
-        [mol_to_graph_data_obj_simple(dm.to_mol(s)) for s in smiles],
+        graph_input,
         batch_size=32,
         shuffle=False,
     )
-    embeddings_fn = get_embedders(args)
-    results = []
+
     p_bar = tqdm(
         total=len(args.models) * len(args.descriptors), desc="Models", position=0
     )
-
+    results = []
     for model_name in args.models:
         results.append(
             model_profile(
-                embeddings_fn,
+                args,
                 model_name,
-                args.descriptors,
                 dataloader,
                 smiles,
                 mols=mols,
                 p_bar=p_bar,
-                knife_config=knife_config,
-                n_runs=args.n_runs,
             )
         )
     results = pd.concat(results)
-    results.to_csv(args.out_file, index=False)
+    results.to_csv(args.out_file + args.dataset + ".csv", index=False)
     return results
 
 
 if __name__ == "__main__":
     wandb.init(project="Emir")
     df = main()
-    max_desc = df.groupby("desc2").mi.max()
-    df["mi_normed"] = df.apply(lambda x: x.mi / max_desc[x.desc2], axis=1)
+    max_desc = df.groupby("Y")["I(X->Y)"].max()
+    df["mi_normed"] = df.apply(lambda x: x["I(X->Y)"] / max_desc[x.Y], axis=1)
 
     wandb.log(
         {

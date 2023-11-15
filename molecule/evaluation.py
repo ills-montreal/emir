@@ -8,11 +8,13 @@ import matplotlib.pyplot as plt
 
 from moleculenet_encoding import mol_to_graph_data_obj_simple
 from utils import get_embeddings_from_model_moleculenet, get_molfeat_descriptors
+from sklearn.metrics import average_precision_score, f1_score, roc_auc_score
 
 
 def get_features(
     dataloader,
     smiles,
+    mols=None,
     model_path="backbone_pretrained_models/GraphLog/Contextual.pth",
     desc_name="rdkit",
     length=512,
@@ -22,7 +24,9 @@ def get_features(
             dataloader=dataloader, smiles=smiles, path=model_path
         )
     if not desc_name == "None":
-        fp = get_molfeat_descriptors(dataloader, smiles, desc_name, length=length)
+        fp = get_molfeat_descriptors(
+            dataloader, smiles, desc_name, mols=mols, length=length
+        )
 
     if model_path == "None":
         return fp
@@ -36,36 +40,43 @@ def get_dataloaders(
     y_train,
     smiles_test,
     y_test,
+    mols_train=None,
+    mols_test=None,
     desc_name="rdkit",
     model_path="backbone_pretrained_models/GraphLog/Contextual.pth",
     length=512,
     batch_size=128,
 ):
-    dataloader_train = DataLoader(
-        [
-            mol_to_graph_data_obj_simple(dm.to_mol(s_i), y_i, s_i)
-            for s_i, y_i in zip(smiles_train, y_train)
-        ],
-        batch_size=64,
-        shuffle=False,
-    )
-    dataloader_test = DataLoader(
-        [
-            mol_to_graph_data_obj_simple(
-                dm.to_mol(
+    if not model_path is "None":
+        dataloader_train = DataLoader(
+            [
+                mol_to_graph_data_obj_simple(dm.to_mol(s_i), y_i, s_i)
+                for s_i, y_i in zip(smiles_train, y_train)
+            ],
+            batch_size=64,
+            shuffle=False,
+        )
+        dataloader_test = DataLoader(
+            [
+                mol_to_graph_data_obj_simple(
+                    dm.to_mol(
+                        s_i,
+                    ),
+                    y_i,
                     s_i,
-                ),
-                y_i,
-                s_i,
-            )
-            for s_i, y_i in zip(smiles_test, y_test)
-        ],
-        batch_size=64,
-        shuffle=False,
-    )
+                )
+                for s_i, y_i in zip(smiles_test, y_test)
+            ],
+            batch_size=64,
+            shuffle=False,
+        )
+    else:
+        dataloader_train = None
+        dataloader_test = None
     z_train = get_features(
         dataloader_train,
         smiles_train,
+        mols=mols_train,
         model_path=model_path,
         desc_name=desc_name,
         length=length,
@@ -73,6 +84,7 @@ def get_dataloaders(
     z_test = get_features(
         dataloader_test,
         smiles_test,
+        mols=mols_test,
         desc_name=desc_name,
         model_path=model_path,
         length=length,
@@ -96,6 +108,9 @@ class Feed_forward(torch.nn.Module):
         self.train_loss = []
         self.test_loss = []
         self.test_acc = []
+        self.test_aucpr = []
+        self.test_f1 = []
+        self.test_roc = []
         self.loss_fn = torch.nn.BCEWithLogitsLoss()
 
         self.norm_fn = torch.nn.BatchNorm1d if norm == "batch" else torch.nn.LayerNorm
@@ -157,9 +172,25 @@ class Feed_forward(torch.nn.Module):
         self.test_acc.append(
             ((y_hat_test > 0.5).float() == y_true).float().mean().item()
         )
+        self.test_aucpr.append(
+            average_precision_score(
+                y_true.detach().cpu().numpy(), y_hat_test.detach().cpu().numpy()
+            )
+        )
+        self.test_f1.append(
+            f1_score(
+                y_true.detach().cpu().numpy(),
+                (y_hat_test.detach().cpu().numpy() > 0.5).astype(int),
+            )
+        )
+        self.test_roc.append(
+            roc_auc_score(
+                y_true.detach().cpu().numpy(), y_hat_test.detach().cpu().numpy()
+            )
+        )
 
     def train_model(self, dataloader_train, dataloader_test, n_epochs=100):
-        for _ in trange(n_epochs):
+        for _ in range(n_epochs):
             self.train_epoch(dataloader_train)
             self.evaluate(dataloader_test)
 
