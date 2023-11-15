@@ -12,30 +12,32 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     :param parser: argparse.ArgumentParser
     :return: argparse.ArgumentParser
     """
+    parser.add_argument("--n-runs", type=int, default=1)
+
     parser.add_argument(
         "--models",
         type=str,
         nargs="+",
         default=[
             "Not-trained",
-            "GraphMVP",
-            "GROVER",
-            "AttributeMask",
-            "ContextPred",
-            "EdgePred",
-            "GPT-GNN",
-            "GraphCL",
-            "GraphLog",
             "InfoGraph",
         ],
         help="List of models to compare",
     )
 
     parser.add_argument(
+        "--compute-both-mi",
+        action="store_true",
+        help="Compute both MI(x1, x2) and MI(x2, x1)",
+    )
+    parser.set_defaults(compute_both_mi=False)
+
+    parser.add_argument(
         "--descriptors",
         type=str,
         nargs="+",
         default=[
+            "physchem",
             "ecfp-count",
             "ecfp",
             "estate",
@@ -47,6 +49,11 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "scaffoldkeys",
             "cats",
             "default",
+            "gobbi",
+            "pmapper",
+            "cats/3D",
+            "gobbi/3D",
+            "pmapper/3D",
         ],
         help="List of descriptors to compare",
     )
@@ -61,7 +68,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--out_file",
         type=str,
-        default="results.csv",
+        default="results",
         help="Output file",
     )
 
@@ -88,7 +95,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--n-epochs", type=int, default=100)
+    parser.add_argument("--n-epochs", type=int, default=500)
     parser.add_argument("--ff-layers", type=int, default=2)
     parser.add_argument("--cov-diagonal", type=str, default="var")
     parser.add_argument("--cov-off-diagonal", type=str, default="")
@@ -115,8 +122,8 @@ def generate_knife_config_from_args(args: argparse.Namespace) -> KNIFEArgs:
         ff_layers=args.ff_layers,
         cov_diagonal=args.cov_diagonal,
         cov_off_diagonal=args.cov_off_diagonal,
-        optimize_mu=args.optimize_mu == "true",
+        optimize_mu=args.optimize_mu,
         ff_residual_connection=args.ff_residual_connection == "true",
-        use_tanh=args.use_tanh == "true",
+        use_tanh=args.use_tanh,
     )
     return knife_config
