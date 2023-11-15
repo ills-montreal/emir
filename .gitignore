@@ -182,3 +182,4 @@ molecule/backbone_pretrained_models/*
 molecule/data/*
 molecule/results.csv
 *wandb*
+molecule/fig/*

@@ -5,7 +5,7 @@ from tqdm import tqdm
 import datamol as dm
 from molfeat.trans.fp import FPVecTransformer
 from molfeat.trans import MoleculeTransformer
-from molfeat.calc.pharmacophore import Pharmacophore2D
+from molfeat.calc.pharmacophore import Pharmacophore2D, Pharmacophore3D
 import torch_geometric.nn.pool as tgp
 from torch_geometric.data import DataLoader
 
@@ -14,6 +14,7 @@ import torch
 
 from models.moleculenet_models import GNN, GNN_graphpred
 from moleculenet_encoding import mol_to_graph_data_obj_simple
+from models.transformers_models import get_hugging_face_model
 
 MODEL_PARAMS = {
     "num_layer": 5,
@@ -24,7 +25,6 @@ MODEL_PARAMS = {
 }
 
 threeD_method_fpvec = ["usrcat", "electroshape", "usr"]
-# threeD_method_moleculetransf = ["cats3d",]
 fpvec_method = [
     "ecfp-count",
     "ecfp",
@@ -34,16 +34,22 @@ fpvec_method = [
     "topological",
     "avalon",
     "maccs",
+    "atompair-count",
+    "topological-count",
+    "fcfp-count",
+    "secfp",
+    "pattern",
+    "fcfp"
 ]
 moleculetransf_method = [
     "scaffoldkeys",
-    "cats2d",
+    "mordred"
 ]
 pharmac_method = ["cats", "default", "gobbi", "pmapper"]
 
 
 @torch.no_grad()
-def get_embeddings_from_model(
+def get_embeddings_from_model_moleculenet(
     dataloader: DataLoader,
     smiles: List[str],
     mols: Optional[List[dm.Mol]] = None,
@@ -63,6 +69,30 @@ def get_embeddings_from_model(
             )
         )
     embeddings = torch.cat(embeddings, dim=0)
+    return embeddings
+
+
+def get_embeddings_from_transformers(
+    dataloader: DataLoader,
+    smiles: List[str],
+    mols: Optional[List[dm.Mol]] = None,
+    transformer_name: str = "graphormer",
+    normalize: bool = False,
+):
+    model, token = get_hugging_face_model(transformer_name)
+    if token == None:
+        embeddings = torch.tensor(model(smiles))
+    else:
+        input_tok = token(
+            smiles, padding=True, truncation=True, return_tensors="pt", max_length=128
+        )
+        embeddings = torch.tensor(
+            model(
+                input_tok["input_ids"],
+                input_tok["attention_mask"],
+                input_tok["token_type_ids"],
+            )
+        )
     return embeddings
 
 
@@ -95,6 +125,20 @@ def get_molfeat_transformer(transformer_name: str, length: int = 1024):
                 dtype=float,
             ),
             False,
+        )
+    elif (
+        transformer_name.endswith("/3D")
+        and transformer_name[:-3] in pharmac_method
+        and not transformer_name[:-3] == "default"
+    ):
+        return (
+            MoleculeTransformer(
+                featurizer=Pharmacophore3D(
+                    factory=transformer_name[:-3], length=length
+                ),
+                dtype=float,
+            ),
+            True,
         )
     else:
         raise ValueError(f"Invalid transformer name: {transformer_name}")

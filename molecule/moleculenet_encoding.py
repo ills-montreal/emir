@@ -1,7 +1,7 @@
-
 import os
 import pickle
 from itertools import chain, repeat
+from typing import Optional
 
 import networkx as nx
 import numpy as np
@@ -12,7 +12,6 @@ from rdkit.Chem import AllChem, Descriptors
 from rdkit.Chem.rdMolDescriptors import GetMorganFingerprintAsBitVect
 from torch.utils import data
 from torch_geometric.data import Data, InMemoryDataset, download_url, extract_zip
-
 
 
 allowable_features = {
@@ -50,8 +49,9 @@ allowable_features = {
 }
 
 
-
-def mol_to_graph_data_obj_simple(mol):
+def mol_to_graph_data_obj_simple(
+    mol: Chem.rdchem.Mol, y: Optional[float] = None, smiles: Optional[str] = None,
+):
     """used in MoleculeDataset() class
     Converts rdkit mol objects to graph data object in pytorch geometric
     NB: Uses simplified atom and bond features, and represent as indices
@@ -93,6 +93,6 @@ def mol_to_graph_data_obj_simple(mol):
         # data.edge_attr: Edge feature matrix with shape [num_edges, num_edge_features]
         edge_attr = torch.tensor(np.array(edge_features_list), dtype=torch.long)
 
-    data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+    data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, smiles=smiles)
 
     return data
