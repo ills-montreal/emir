@@ -37,7 +37,9 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         default=[
-            "physchem",
+            "usrcat",
+            "electroshape",
+            "usr",
             "ecfp-count",
             "ecfp",
             "estate",
@@ -46,14 +48,13 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "topological",
             "avalon",
             "maccs",
+            "atompair-count",
+            "topological-count",
+            "fcfp-count",
+            "secfp",
+            "pattern",
+            "fcfp",
             "scaffoldkeys",
-            "cats",
-            "default",
-            "gobbi",
-            "pmapper",
-            "cats/3D",
-            "gobbi/3D",
-            "pmapper/3D",
         ],
         help="List of descriptors to compare",
     )
@@ -72,12 +73,6 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         help="Output file",
     )
 
-    parser.add_argument(
-        "--precompute-3d",
-        action="store_true",
-        help="Precompute 3D coordinates",
-    )
-    parser.set_defaults(precompute_3d=False)
 
     parser.add_argument("--fp-length", type=int, default=1024)
 
