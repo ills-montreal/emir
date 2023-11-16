@@ -5,9 +5,7 @@ from functools import partial
 import argparse
 from typing import Tuple, List, Dict
 
-from tdc.utils import retrieve_label_name_list
-from tdc.single_pred import Tox
-
+import json
 import datamol as dm
 import torch
 import numpy as np
@@ -19,19 +17,12 @@ from tqdm import tqdm
 from torch_geometric.data import DataLoader
 
 from moleculenet_encoding import mol_to_graph_data_obj_simple
-from utils import (
-    get_embeddings_from_model_moleculenet,
-    get_embeddings_from_transformers,
-    get_molfeat_descriptors,
-    get_molfeat_transformer,
-)
+from utils import get_features
 from parser_mol import (
     add_eval_cli_args,
     add_knife_args,
     generate_knife_config_from_args,
 )
-from precompute_3d import precompute_3d
-from tdc_dataset import get_dataset
 from emir.estimators import KNIFEEstimator, KNIFEArgs
 
 logger = logging.getLogger(__name__)
@@ -63,17 +54,15 @@ def get_embedders(args: argparse.Namespace):
     MODELS["Not-trained"] = ""
     embeddings_fn = {}
     for model_name, model_path in MODELS.items():
-        embeddings_fn[model_name] = partial(
-            get_embeddings_from_model_moleculenet, path=model_path
-        )
+        embeddings_fn[model_name] = partial(get_features, path=model_path)
     for method in args.descriptors:
         embeddings_fn[method] = partial(
-            get_molfeat_descriptors, transformer_name=method, length=args.fp_length
+            get_features, transformer_name=method, length=args.fp_length
         )
     for model_name in args.models:
         if not model_name in embeddings_fn:
             embeddings_fn[model_name] = partial(
-                get_embeddings_from_transformers, transformer_name=model_name
+                get_features, transformer_name=model_name
             )
 
     return embeddings_fn
@@ -101,7 +90,7 @@ def model_profile(
     }
     for desc in args.descriptors:
         mis = []
-        for _ in range(args.n_runs):
+        for i in range(args.n_runs):
             mi, m, c, loss = get_knife_preds(
                 embeddings_fn[desc],
                 embeddings_fn[model_name],
@@ -110,6 +99,7 @@ def model_profile(
                 mols,
                 knife_config=knife_config,
                 dataset=args.dataset,
+                iteration=i,
             )
             results["Y"].append(model_name)
             results["X"].append(desc)
@@ -126,6 +116,7 @@ def model_profile(
                     mols,
                     knife_config=knife_config,
                     dataset=args.dataset,
+                    iteration=i,
                 )
                 results["I(X)"].append(m)
                 results["I(X|Y)"].append(c)
@@ -148,9 +139,14 @@ def get_knife_preds(
     mols: List[dm.Mol] = None,
     knife_config: KNIFEArgs = None,
     dataset: str = "hERG_Karim",
+    iteration=0,
 ) -> Tuple[float, float, float, List[float]]:
-    x1 = emb_fn1(dataloader, smiles, mols=mols, dataset= dataset)
-    x2 = emb_fn2(dataloader, smiles, mols=mols, dataset = dataset)
+    x1 = emb_fn1(dataloader, smiles, mols=mols, dataset=dataset)
+    x2 = emb_fn2(dataloader, smiles, mols=mols, dataset=dataset)
+
+
+
+
     knife_estimator = KNIFEEstimator(
         knife_config, x1.shape[1], x2.shape[1]
     )  # Learn x2 from x1
@@ -167,32 +163,20 @@ def main():
     parser = add_knife_args(parser)
     args = parser.parse_args()
 
-    df = get_dataset(args.dataset)
+    assert os.path.exists(
+        f"data/{args.dataset}/smiles.json"
+    ), "Please run precompute_molf_descriptors.py first."
 
-    smiles = df["Drug"].tolist()
-    mols = None
-    if args.precompute_3d:
-        mols, smiles = precompute_3d(smiles, args.dataset)
-        # Removing molecules that cannot be featurized
-        for t_name in ["usr", "electroshape", "usrcat"]:
-            transformer, thrD = get_molfeat_transformer(t_name)
-            feat, valid_id = transformer(mols, ignore_errors=True)
-            smiles = np.array(smiles)[valid_id]
-            mols = np.array(mols)[valid_id]
+    with open(f"data/{args.dataset}/smiles.json", "r") as f:
+        smiles = json.load(f)
+    if os.path.exists(f"data/{args.dataset}/preprocessed.sdf"):
+        mols = dm.read_sdf(f"data/{args.dataset}/preprocessed.sdf")
+    else:
+        mols = None
 
-    logger.info(f"Dataset {args.dataset} loaded, with {len(smiles)} datapoints")
     graph_input = []
-    valid_smiles = []
-    valid_mols = []
-    for i, s in enumerate(tqdm(smiles, desc="Generating graphs")):
-        try:
-            graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)))
-            valid_smiles.append(s)
-            valid_mols.append(mols[i])
-        except:
-            pass
-    smiles = valid_smiles
-    mols = valid_mols
+    for s in smiles:
+        graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)))
 
     dataloader = DataLoader(
         graph_input,
