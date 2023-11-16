@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(
     description="Compute ",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
+
 parser.add_argument(
     "--dataset",
     type=str,
@@ -45,7 +46,7 @@ DESCRIPTORS = [
     "pattern",
     "fcfp",
     "scaffoldkeys",
-    "mordred",
+    #"mordred",
     "cats",
     "default",
     "gobbi",
@@ -57,8 +58,6 @@ DESCRIPTORS = [
 
 
 def main():
-    dict_smiles_desc = {}
-
     args = parser.parse_args()
     df = get_dataset(args.dataset)
 
@@ -85,18 +84,22 @@ def main():
             pass
     smiles = valid_smiles
     mols = valid_mols
+    if not os.path.exists(f"data/{args.dataset}"):
+        os.makedirs(f"data/{args.dataset}")
 
-    for desc in tqdm(DESCRIPTORS):
-        dict_smiles_desc[desc] = {}
-        for length in [256, 512, 1024, 2048]:
-            dict_smiles_desc[desc][length] = get_molfeat_descriptors(
-                None, smiles, desc, mols=mols, length=length
-            ).tolist()
+    for desc in tqdm(DESCRIPTORS, position=0, desc="Descriptors"):
+        for length in tqdm(
+            [256, 512, 1024, 2048], desc="Length", position=1, leave=False
+        ):
+            if not os.path.exists(f"data/{args.dataset}/{desc}_{length}.npy"):
+                descriptor = get_molfeat_descriptors(
+                    None, smiles, desc, mols=mols, length=length
+                ).numpy()
 
-    with open(f"data/{args.dataset}_molfeat.json", "w") as f:
-        json.dump(dict_smiles_desc, f)
-    return dict_smiles_desc
+
+                np.save(f"data/{args.dataset}/{desc}_{length}.npy", descriptor)
+                del descriptor
 
 
 if __name__ == "__main__":
-    dict_smiles_desc = main()
+    main()

@@ -109,6 +109,7 @@ def model_profile(
                 smiles,
                 mols,
                 knife_config=knife_config,
+                dataset=args.dataset,
             )
             results["Y"].append(model_name)
             results["X"].append(desc)
@@ -124,6 +125,7 @@ def model_profile(
                     smiles,
                     mols,
                     knife_config=knife_config,
+                    dataset=args.dataset,
                 )
                 results["I(X)"].append(m)
                 results["I(X|Y)"].append(c)
@@ -145,9 +147,10 @@ def get_knife_preds(
     smiles: List[str],
     mols: List[dm.Mol] = None,
     knife_config: KNIFEArgs = None,
+    dataset: str = "hERG_Karim",
 ) -> Tuple[float, float, float, List[float]]:
-    x1 = emb_fn1(dataloader, smiles, mols=mols)
-    x2 = emb_fn2(dataloader, smiles, mols=mols)
+    x1 = emb_fn1(dataloader, smiles, mols=mols, dataset= dataset)
+    x2 = emb_fn2(dataloader, smiles, mols=mols, dataset = dataset)
     knife_estimator = KNIFEEstimator(
         knife_config, x1.shape[1], x2.shape[1]
     )  # Learn x2 from x1
