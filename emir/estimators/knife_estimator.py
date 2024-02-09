@@ -124,7 +124,6 @@ class KNIFEEstimator:
                     logger.info("Reached early stopping criterion")
                     break
 
-
 class FastTensorDataLoader:
     """
     A DataLoader-like object for a set of tensors that can be much faster than
