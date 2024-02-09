@@ -25,6 +25,7 @@ from parser_mol import (
 )
 from emir.estimators import KNIFEEstimator, KNIFEArgs
 
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -54,19 +55,24 @@ def get_embedders(args: argparse.Namespace):
     MODELS["Not-trained"] = ""
     embeddings_fn = {}
     for model_name, model_path in MODELS.items():
-        embeddings_fn[model_name] = partial(get_features, path=model_path)
+        embeddings_fn[model_name] = partial(
+            get_features, path=model_path, feature_type="model", name=model_name
+        )
+
     for method in args.descriptors:
         embeddings_fn[method] = partial(
-            get_features, transformer_name=method, length=args.fp_length
+            get_features,
+            name=method,
+            length=args.fp_length,
+            feature_type="descriptor",
         )
     for model_name in args.models:
         if not model_name in embeddings_fn:
             embeddings_fn[model_name] = partial(
-                get_features, transformer_name=model_name
+                get_features, name=model_name, feature_type="model"
             )
 
     return embeddings_fn
-
 
 def model_profile(
     args: argparse.Namespace,
@@ -87,66 +93,126 @@ def model_profile(
         "I(X)": [],  # Not possible yet
         "I(X|Y)": [],  # Not possible yet
         "I(Y->X)": [],  # Not possible yet
+        "Y_dim": [],
+        "X_dim": [],
+        "is_desc_discrete": [],
     }
+
+    model_embedding = embeddings_fn[model_name](
+        dataloader, smiles, mols=mols, dataset=args.dataset
+    ).to(knife_config.device)
+    df_losses_XY = []
+    df_losses_YX = []
+
     for desc in args.descriptors:
         mis = []
+        descriptors_embedding = embeddings_fn[desc](
+            dataloader, smiles, mols=mols, dataset=args.dataset
+        ).to(knife_config.device)
+        if (
+            args.compute_mds > 0
+            and (
+                descriptors_embedding.unique() == torch.tensor([0, 1]).to(args.device)
+            ).all()
+        ):
+            embedding = MDS(
+                n_components=args.compute_mds,
+                normalized_stress="auto",
+                dissimilarity="precomputed",
+            )
+            # Get matrix of Jaccard Indexes
+            descriptors_embedding = descriptors_embedding.cpu()
+            jacc_ind = torch.matmul(descriptors_embedding, descriptors_embedding.t())
+            jacc_ind = jacc_ind / (
+                jacc_ind.diag().unsqueeze(0) + jacc_ind.diag().unsqueeze(1) - jacc_ind
+            )
+            jacc_ind = 1 - jacc_ind
+
+            descriptors_embedding = torch.tensor(
+                embedding.fit_transform(jacc_ind.numpy())
+            ).to(args.device)
+
         for i in range(args.n_runs):
             mi, m, c, loss = get_knife_preds(
-                embeddings_fn[desc],
-                embeddings_fn[model_name],
-                dataloader,
-                smiles,
-                mols,
-                knife_config=knife_config,
-                dataset=args.dataset,
-                iteration=i,
+                descriptors_embedding, model_embedding, knife_config=knife_config
             )
             results["Y"].append(model_name)
-            results["X"].append(desc)
+            results["X"].append(desc + str(args.fp_length))
             results["I(Y)"].append(m)
             results["I(Y|X)"].append(c)
             results["I(X->Y)"].append(mi)
+            results["Y_dim"].append(model_embedding.shape[1])
+            results["X_dim"].append(descriptors_embedding.shape[1])
+            results["is_desc_discrete"].append(
+                (descriptors_embedding == 0).logical_or(descriptors_embedding == 1).all().item()
+            )
 
+            # saving the loss evolution in losses as csvs
+            df_losses_XY.append(
+                pd.DataFrame(
+                    {
+                        "loss": loss,
+                        "epoch": range(len(loss)),
+                        "run": i,
+                        "X": desc,
+                        "Y": model_name,
+                        "direction": "X->Y",
+                    }
+                )
+            )
             if args.compute_both_mi:
                 mi, m, c, loss = get_knife_preds(
-                    embeddings_fn[model_name],
-                    embeddings_fn[desc],
-                    dataloader,
-                    smiles,
-                    mols,
+                    model_embedding,
+                    descriptors_embedding,
                     knife_config=knife_config,
-                    dataset=args.dataset,
-                    iteration=i,
                 )
                 results["I(X)"].append(m)
                 results["I(X|Y)"].append(c)
                 results["I(Y->X)"].append(mi)
-            else:
-                results["I(Y)"].append(np.nan)
-                results["I(Y|X)"].append(np.nan)
-                results["I(X->Y)"].append(np.nan)
+                df_losses_YX.append(
+                    pd.DataFrame(
+                        {
+                            "loss": loss,
+                            "epoch": range(len(loss)),
+                            "run": i,
+                            "X": desc,
+                            "Y": model_name,
+                            "direction": "Y->X",
+                        }
+                    )
+                )
 
-        if p_bar is not None:
-            p_bar.update(1)
+            else:
+                results["I(X)"].append(np.nan)
+                results["I(X|Y)"].append(np.nan)
+                results["I(Y->X)"].append(np.nan)
+
+            if p_bar is not None:
+                p_bar.update(1)
+
+    if df_losses_XY != []:
+        pd.concat(df_losses_XY).to_csv(
+            os.path.join(
+                os.path.join(args.out_dir, "losses"),
+                f"{args.dataset}_{model_name}_{args.fp_length}_XY.csv",
+            ),
+            index=False,
+        )
+    if df_losses_YX != []:
+        pd.concat(df_losses_YX).to_csv(
+            os.path.join(
+                os.path.join(args.out_dir, "losses"),
+                f"{args.dataset}_{model_name}_{args.fp_length}_YX.csv",
+            ),
+            index=False,
+        )
     return pd.DataFrame(results)
 
-
 def get_knife_preds(
-    emb_fn1: callable,
-    emb_fn2: callable,
-    dataloader: DataLoader,
-    smiles: List[str],
-    mols: List[dm.Mol] = None,
+    x1: callable,
+    x2: callable,
     knife_config: KNIFEArgs = None,
-    dataset: str = "hERG_Karim",
-    iteration=0,
 ) -> Tuple[float, float, float, List[float]]:
-    x1 = emb_fn1(dataloader, smiles, mols=mols, dataset=dataset)
-    x2 = emb_fn2(dataloader, smiles, mols=mols, dataset=dataset)
-
-
-
-
     knife_estimator = KNIFEEstimator(
         knife_config, x1.shape[1], x2.shape[1]
     )  # Learn x2 from x1
@@ -185,23 +251,29 @@ def main():
     )
 
     p_bar = tqdm(
-        total=len(args.models) * len(args.descriptors), desc="Models", position=0
+        total=len(args.models) * len(args.descriptors) * args.n_runs,
+        desc="Progression",
+        position=0,
     )
-    results = []
+    all_results = []
     for model_name in args.models:
-        results.append(
-            model_profile(
-                args,
-                model_name,
-                dataloader,
-                smiles,
-                mols=mols,
-                p_bar=p_bar,
-            )
+        results = model_profile(
+            args,
+            model_name,
+            dataloader,
+            smiles,
+            mols=mols,
+            p_bar=p_bar,
         )
-    results = pd.concat(results)
-    results.to_csv(args.out_file + args.dataset + ".csv", index=False)
-    return results
+
+        results.to_csv(
+            os.path.join(
+                args.out_dir, f"{args.dataset}_{model_name}_{args.fp_length}.csv"
+            ),
+            index=False,
+        )
+        all_results.append(results)
+    return pd.concat(all_results)
 
 
 if __name__ == "__main__":
@@ -212,10 +284,10 @@ if __name__ == "__main__":
 
     wandb.log(
         {
-            "inter_model_std": df.groupby("desc2").mi.std().mean(),
-            "intra_model_std": df.groupby("desc1").mi.std().mean(),
-            "inter_model_std_normalized": df.groupby("desc2").mi_normed.std().mean(),
-            "intra_model_std_normalized": df.groupby("desc1").mi_normed.std().mean(),
+            "inter_model_std": df.groupby("Y")["I(X->Y)"].std().mean(),
+            "intra_model_std": df.groupby("X")["I(X->Y)"].std().mean(),
+            "inter_model_std_normalized": df.groupby("Y").mi_normed.std().mean(),
+            "intra_model_std_normalized": df.groupby("X").mi_normed.std().mean(),
         }
     )
 

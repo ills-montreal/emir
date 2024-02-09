@@ -12,7 +12,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     :param parser: argparse.ArgumentParser
     :return: argparse.ArgumentParser
     """
-    parser.add_argument("--n-runs", type=int, default=1)
+    parser.add_argument("--n-runs", type=int, default=10)
 
     parser.add_argument(
         "--models",
@@ -20,7 +20,23 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         nargs="+",
         default=[
             "Not-trained",
+            "AttributeMask",
+            "ContextPred",
+            #"EdgePred",
+            "GPT-GNN",
             "InfoGraph",
+            "GraphCL",
+            "GraphLog",
+            "GraphMVP",
+            "GROVER",
+            "InfoGraph",
+            "ChemBertMLM-5M",
+            #"ChemBertMLM-10M",
+            #"ChemBertMLM-77M",
+            "ChemBertMTR-5M",
+            #"ChemBertMTR-10M",
+            #"ChemBertMTR-77M",
+            "MolBert",
         ],
         help="List of models to compare",
     )
@@ -30,31 +46,31 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         action="store_true",
         help="Compute both MI(x1, x2) and MI(x2, x1)",
     )
-    parser.set_defaults(compute_both_mi=False)
+    parser.set_defaults(compute_both_mi=True)
 
     parser.add_argument(
         "--descriptors",
         type=str,
         nargs="+",
         default=[
-            "usrcat",
-            "electroshape",
-            "usr",
-            "ecfp-count",
             "ecfp",
             "estate",
+            "cats",
+            "electroshape",
+            "estate",
+            "fcfp",
+            "gobbi",
+            "mordred",
+            "pmapper",
             "erg",
             "rdkit",
             "topological",
             "avalon",
             "maccs",
-            "atompair-count",
-            "topological-count",
-            "fcfp-count",
             "secfp",
-            "pattern",
-            "fcfp",
             "scaffoldkeys",
+            "usr",
+            "usrcat",
         ],
         help="List of descriptors to compare",
     )
@@ -67,12 +83,18 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
-        "--out_file",
+        "--out-dir",
         type=str,
         default="results",
         help="Output file",
     )
 
+    parser.add_argument(
+        "--compute-mds",
+        type=int,
+        help="Reduce fingerprints to lower dimension",
+        default=0,
+    )
 
     parser.add_argument("--fp-length", type=int, default=1024)
 
@@ -88,10 +110,10 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--cond-modes", type=int, default=6)
     parser.add_argument("--marg-modes", type=int, default=6)
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--batch-size", type=int, default=2048)
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--n-epochs", type=int, default=500)
-    parser.add_argument("--ff-layers", type=int, default=2)
+    parser.add_argument("--n-epochs", type=int, default=1000)
+    parser.add_argument("--ff-layers", type=int, default=1)
     parser.add_argument("--cov-diagonal", type=str, default="var")
     parser.add_argument("--cov-off-diagonal", type=str, default="")
     parser.add_argument("--optimize-mu", type=str, default="false")
