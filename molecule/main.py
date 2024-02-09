@@ -109,28 +109,6 @@ def model_profile(
         descriptors_embedding = embeddings_fn[desc](
             dataloader, smiles, mols=mols, dataset=args.dataset
         ).to(knife_config.device)
-        if (
-            args.compute_mds > 0
-            and (
-                descriptors_embedding.unique() == torch.tensor([0, 1]).to(args.device)
-            ).all()
-        ):
-            embedding = MDS(
-                n_components=args.compute_mds,
-                normalized_stress="auto",
-                dissimilarity="precomputed",
-            )
-            # Get matrix of Jaccard Indexes
-            descriptors_embedding = descriptors_embedding.cpu()
-            jacc_ind = torch.matmul(descriptors_embedding, descriptors_embedding.t())
-            jacc_ind = jacc_ind / (
-                jacc_ind.diag().unsqueeze(0) + jacc_ind.diag().unsqueeze(1) - jacc_ind
-            )
-            jacc_ind = 1 - jacc_ind
-
-            descriptors_embedding = torch.tensor(
-                embedding.fit_transform(jacc_ind.numpy())
-            ).to(args.device)
 
         for i in range(args.n_runs):
             mi, m, c, loss = get_knife_preds(
