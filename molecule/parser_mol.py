@@ -89,13 +89,6 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         help="Output file",
     )
 
-    parser.add_argument(
-        "--compute-mds",
-        type=int,
-        help="Reduce fingerprints to lower dimension",
-        default=0,
-    )
-
     parser.add_argument("--fp-length", type=int, default=1024)
 
     return parser
