@@ -11,10 +11,10 @@ from .kernels import KernelFactory
 
 
 class KNIFE(nn.Module):
-    def __init__(self, args, zc_dim, zd_dim):
+    def __init__(self, args, zc_dim, zd_dim, kernel_type="gaussian"):
         super(KNIFE, self).__init__()
         self.kernel_marg, self.kernel_cond = KernelFactory(
-            kernel="gaussian", args=args, zc_dim=zc_dim, zd_dim=zd_dim
+            kernel=kernel_type, args=args, zc_dim=zc_dim, zd_dim=zd_dim
         )
 
     def forward(self, z_c, z_d):  # samples have shape [sample_size, dim]
