@@ -91,6 +91,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument("--fp-length", type=int, default=1024)
+    parser.add_argument("--make-continuous", type=int, default=64)
 
     return parser
 
@@ -116,7 +117,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--stopping-criterion", type=str, default="early_stopping")
     parser.add_argument("--mean-sep", type=float, default=1e1)
     parser.add_argument("--delta-kernel", type=str, default="true")
-    parser.add_argument("--eps", type=float, default=1e-2)
+    parser.add_argument("--eps", type=float, default=1e-5)
     parser.add_argument("--n-epochs-stop", type=int, default=5)
     parser.add_argument("--async-prop-training", type=float, default=0.3)
     parser.add_argument("--async-lr", type=float, default=0.01)

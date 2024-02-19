@@ -11,6 +11,7 @@ import torch
 import numpy as np
 import pandas as pd
 import wandb
+from sklearn.random_projection import GaussianRandomProjection
 
 from tqdm import tqdm
 
@@ -85,6 +86,7 @@ def model_profile(
     dataloader: DataLoader,
     smiles: List[str],
     mols: List[dm.Mol] = None,
+    marginal_kernels: Dict = {},
     p_bar: tqdm = None,
 ):
     knife_config = generate_knife_config_from_args(args)
@@ -109,8 +111,6 @@ def model_profile(
     df_losses_XY = []
     df_losses_YX = []
 
-    marginal_kernels = {}
-
     for desc in args.descriptors:
         mis = []
         descriptors_embedding = embeddings_fn[desc](
@@ -124,6 +124,14 @@ def model_profile(
         ):
             # setting to 1 all elements different from 0
             descriptors_embedding = (descriptors_embedding != 0).float()
+
+        if args.make_continuous > 0:
+            assert args.make_continuous > 1
+            random_gaussian = GaussianRandomProjection(
+                n_components=args.make_continuous
+            )
+            descriptors_embedding = torch.tensor(random_gaussian.fit_transform(descriptors_embedding.cpu().numpy()), device=descriptors_embedding.device)
+            print(random_gaussian.n_components_)
 
         for i in range(args.n_runs):
             mi, m, c, loss, marg_ent, cond_ent, kernel_marg = get_knife_preds(
@@ -273,6 +281,8 @@ def main():
         position=0,
     )
     all_results = []
+    marginal_kernels = {}
+
     for model_name in args.models:
         results = model_profile(
             args,
@@ -280,6 +290,7 @@ def main():
             dataloader,
             smiles,
             mols=mols,
+            marginal_kernels=marginal_kernels,
             p_bar=p_bar,
         )
 
