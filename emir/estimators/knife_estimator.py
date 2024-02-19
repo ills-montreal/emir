@@ -4,7 +4,6 @@ from typing import Tuple, List, Optional, Literal
 
 import torch
 from tqdm import tqdm, trange
-from torchmetrics.classification import MultilabelJaccardIndex
 
 
 from .knife import KNIFE
@@ -128,7 +127,7 @@ class KNIFEEstimator:
         """
         Check if the early stopping criterion is reached
         """
-        if self.args.stopping_criterion == "early_stopping" and len(loss) > 1 and abs(loss[-1] - loss[-2]/(marg_ent+1e-8)) < self.args.eps:
+        if self.args.stopping_criterion == "early_stopping" and len(loss) > 1 and abs((loss[-1] - loss[-2])/(marg_ent+1e-8)) < self.args.eps:
             self.early_stop_iter += 1
             print(self.early_stop_iter, self.args.n_epochs_stop)
             if self.early_stop_iter >= self.args.n_epochs_stop:
@@ -143,7 +142,7 @@ class KNIFEEstimator:
         Fit the estimator to the data
         """
 
-        optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.lr)
+        optimizer = torch.optim.AdamW(self.knife.parameters(), lr=self.args.lr)
 
         train_loader = FastTensorDataLoader(
             x,
