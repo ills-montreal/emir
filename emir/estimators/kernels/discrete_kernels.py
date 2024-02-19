@@ -10,7 +10,6 @@ import torch.nn as nn
 from .feed_forward import FF
 from .kernels import BaseMargKernel, BaseCondKernel
 
-
 class DiscreteMargKernel(BaseMargKernel):
     """
     Used to compute p(z_d)
@@ -18,8 +17,12 @@ class DiscreteMargKernel(BaseMargKernel):
 
     def __init__(self, args, zc_dim, zd_dim, init_samples=None, **kwargs):
         super().__init__(args, zc_dim, zd_dim)
+        self.kernel_temp = 10  # HARDCODED
+        self.bce = nn.BCELoss(reduction="none")
         self.K = args.marg_modes if self.optimize_mu else args.batch_size
-        self.init_std = args.init_std*10 # Hard coded for now to avoid too small std due to sigmoid
+        self.init_std = (
+            args.init_std * 10
+        )  # Hard coded for now to avoid too small std due to sigmoid
 
         if init_samples is None:
             init_samples = self.init_std * torch.randn((self.K, self.d))
@@ -39,17 +42,14 @@ class DiscreteMargKernel(BaseMargKernel):
         assert len(x.shape) == 2 and x.shape[1] == self.d, "x has to have shape [N, d]"
         x = x[:, None, :]
         w = torch.log_softmax(self.weigh, dim=1)
-        mu = torch.sigmoid(self.means)
+        mu = torch.sigmoid(self.means * self.kernel_temp)
         y = x * torch.log(mu + 1e-8) + (1 - x) * torch.log(1 - mu + 1e-8)  # [N, K, d]
         y = torch.logsumexp(y.sum(dim=-1) + w, dim=-1)
-        return y
+        return y, mu
 
     def update_parameters(self, z):
         self.means = z
 
-    def forward(self, x):
-        y = -self.logpdf(x)
-        return torch.mean(y)
 
 
 class DiscreteCondKernel(BaseCondKernel):
@@ -67,19 +67,17 @@ class DiscreteCondKernel(BaseCondKernel):
         self.K = args.cond_modes
         self.mu = FF(args, zc_dim, self.d, self.K * zd_dim)
         self.weight = FF(args, zc_dim, self.d, self.K)
+        self.kernel_temp = 10
 
     def logpdf(self, z_c, z_d):  # H(z_d|z_c)
         z_d = z_d[:, None, :]  # [N, 1, d]
         w = torch.log_softmax(self.weight(z_c), dim=-1)  # [N, K]
         mu = self.mu(z_c)
         mu = mu.reshape(-1, self.K, self.d)
-        mu = torch.sigmoid(mu)
+        mu = torch.sigmoid(mu * self.kernel_temp)  # [N, K, d]
         z = z_d * torch.log(mu + 1e-8) + (1 - z_d) * torch.log(
             1 - mu + 1e-8
         )  # [N, K, d]
         z = torch.logsumexp(z.sum(dim=-1) + w, dim=-1)
-        return z
+        return z, mu
 
-    def forward(self, z_c, z_d):
-        z = -self.logpdf(z_c, z_d)
-        return torch.mean(z)

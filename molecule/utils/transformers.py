@@ -32,7 +32,7 @@ def get_embeddings_from_transformers(
     smiles: List[str],
     mols: Optional[List[dm.Mol]] = None,
     transformer_name: str = "graphormer",
-    device: str = "cuda",
+    device: str = "cpu",
     batch_size: int = 64,
     **kwargs,
 ):

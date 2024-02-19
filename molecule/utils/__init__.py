@@ -6,9 +6,10 @@ import torch
 from torch.utils.data import DataLoader
 import torch_geometric.nn.pool as tgp
 
-#from .molfeat import get_molfeat_descriptors
+from .molfeat import get_molfeat_descriptors
 from .descriptors import DESCRIPTORS
 from .model_factory import ModelFactory
+
 
 def get_features(
     dataloader: DataLoader,
@@ -19,12 +20,13 @@ def get_features(
     length: int = 1024,
     dataset: str = "tox21",
     path: str = "",
+    device: str = "cpu",
 ):
     if feature_type == "descriptor":
-        transformer_name = name
+        transformer_name = name.replace("/", "_")
         if os.path.exists(f"data/{dataset}/{transformer_name}_{length}.npy"):
             molecular_embedding = torch.tensor(
-                np.load(f"data/{dataset}/{transformer_name}_{length}.npy")
+                np.load(f"data/{dataset}/{transformer_name}_{length}.npy"), device=device
             )
             assert len(molecular_embedding) == len(
                 smiles
@@ -43,7 +45,12 @@ def get_features(
 
     if feature_type == "model":
         molecular_embedding = ModelFactory(name)(
-            dataloader, smiles, mols=mols, path=path, transformer_name=name,
+            dataloader,
+            smiles,
+            mols=mols,
+            path=path,
+            transformer_name=name,
+            device=device,
         )
         return molecular_embedding
 
