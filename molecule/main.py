@@ -25,7 +25,6 @@ from parser_mol import (
 )
 from emir.estimators import KNIFEEstimator, KNIFEArgs
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -56,20 +55,26 @@ def get_embedders(args: argparse.Namespace):
     embeddings_fn = {}
     for model_name, model_path in MODELS.items():
         embeddings_fn[model_name] = partial(
-            get_features, path=model_path, feature_type="model", name=model_name
+            get_features,
+            path=model_path,
+            feature_type="model",
+            name=model_name,
+            device=args.device,
         )
 
     for method in args.descriptors:
-        embeddings_fn[method] = partial(
-            get_features,
-            name=method,
-            length=args.fp_length,
-            feature_type="descriptor",
-        )
+        if not method in embeddings_fn:
+            embeddings_fn[method] = partial(
+                get_features,
+                name=method,
+                length=args.fp_length,
+                feature_type="descriptor",
+                device=args.device,
+            )
     for model_name in args.models:
         if not model_name in embeddings_fn:
             embeddings_fn[model_name] = partial(
-                get_features, name=model_name, feature_type="model"
+                get_features, name=model_name, feature_type="model", device=args.device
             )
 
     return embeddings_fn
@@ -104,16 +109,29 @@ def model_profile(
     df_losses_XY = []
     df_losses_YX = []
 
+    marginal_kernels = {}
+
     for desc in args.descriptors:
         mis = []
         descriptors_embedding = embeddings_fn[desc](
             dataloader, smiles, mols=mols, dataset=args.dataset
         ).to(knife_config.device)
+        if (
+            len(descriptors_embedding.unique()) < 1500
+            and not (descriptors_embedding == 0)
+            .logical_or(descriptors_embedding == 1)
+            .all()
+        ):
+            # setting to 1 all elements different from 0
+            descriptors_embedding = (descriptors_embedding != 0).float()
 
         for i in range(args.n_runs):
-            mi, m, c, loss = get_knife_preds(
-                descriptors_embedding, model_embedding, knife_config=knife_config
+            mi, m, c, loss, marg_ent, cond_ent, kernel_marg = get_knife_preds(
+                descriptors_embedding, model_embedding, knife_config=knife_config, kernel_marg=marginal_kernels.get(model_name, None)
             )
+            if model_name not in marginal_kernels:
+                marginal_kernels[model_name] = kernel_marg
+
             results["Y"].append(model_name)
             results["X"].append(desc + str(args.fp_length))
             results["I(Y)"].append(m)
@@ -122,14 +140,19 @@ def model_profile(
             results["Y_dim"].append(model_embedding.shape[1])
             results["X_dim"].append(descriptors_embedding.shape[1])
             results["is_desc_discrete"].append(
-                (descriptors_embedding == 0).logical_or(descriptors_embedding == 1).all().item()
+                (descriptors_embedding == 0)
+                .logical_or(descriptors_embedding == 1)
+                .all()
+                .item()
             )
 
             # saving the loss evolution in losses as csvs
             df_losses_XY.append(
                 pd.DataFrame(
                     {
-                        "loss": loss,
+                        "loss": loss.cpu().numpy(),
+                        "marg_ent": marg_ent.cpu().numpy(),
+                        "cond_ent": cond_ent.cpu().numpy(),
                         "epoch": range(len(loss)),
                         "run": i,
                         "X": desc,
@@ -139,18 +162,24 @@ def model_profile(
                 )
             )
             if args.compute_both_mi:
-                mi, m, c, loss = get_knife_preds(
+                mi, m, c, loss, marg_ent, cond_ent, kernel_marg = get_knife_preds(
                     model_embedding,
                     descriptors_embedding,
                     knife_config=knife_config,
+                    kernel_marg=marginal_kernels.get(desc, None),
                 )
+                if desc not in marginal_kernels:
+                    marginal_kernels[desc] = kernel_marg
+
                 results["I(X)"].append(m)
                 results["I(X|Y)"].append(c)
                 results["I(Y->X)"].append(mi)
                 df_losses_YX.append(
                     pd.DataFrame(
                         {
-                            "loss": loss,
+                            "loss": loss.cpu().numpy(),
+                            "marg_ent": marg_ent.cpu().numpy(),
+                            "cond_ent": cond_ent.cpu().numpy(),
                             "epoch": range(len(loss)),
                             "run": i,
                             "X": desc,
@@ -186,16 +215,26 @@ def model_profile(
         )
     return pd.DataFrame(results)
 
+
 def get_knife_preds(
     x1: callable,
     x2: callable,
     knife_config: KNIFEArgs = None,
+    kernel_marg: Dict = None,
 ) -> Tuple[float, float, float, List[float]]:
     knife_estimator = KNIFEEstimator(
-        knife_config, x1.shape[1], x2.shape[1]
+        knife_config, x1.shape[1], x2.shape[1], precomputed_marg_kernel=kernel_marg
     )  # Learn x2 from x1
     mi, m, c = knife_estimator.eval(x1.float(), x2.float(), record_loss=True)
-    return mi, m, c, knife_estimator.recorded_loss
+    return (
+        mi,
+        m,
+        c,
+        torch.tensor(knife_estimator.recorded_loss, device="cpu"),
+        torch.tensor(knife_estimator.recorded_marg_ent, device="cpu"),
+        torch.tensor(knife_estimator.recorded_cond_ent, device="cpu"),
+        knife_estimator.knife.kernel_marg,
+    )
 
 
 def main():
@@ -220,7 +259,7 @@ def main():
 
     graph_input = []
     for s in smiles:
-        graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)))
+        graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)).to(args.device))
 
     dataloader = DataLoader(
         graph_input,

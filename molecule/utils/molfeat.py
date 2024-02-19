@@ -65,7 +65,7 @@ def get_molfeat_transformer(transformer_name: str, length: int = 1024):
             False,
         )
     elif (
-        transformer_name.endswith("/3D")
+        transformer_name.endswith("3D")
         and transformer_name[:-3] in pharmac_method
         and not transformer_name[:-3] == "default"
     ):

@@ -2,19 +2,15 @@ import os
 import datamol as dm
 import numpy as np
 import pandas as pd
-from tdc.single_pred import Tox
-from tdc.utils import retrieve_label_name_list
 from tqdm import tqdm
 import argparse
 import json
-from typing import List, Tuple, Optional
 
 from utils import get_features
 from moleculenet_encoding import mol_to_graph_data_obj_simple
 from precompute_3d import precompute_3d
 from utils.descriptors import DESCRIPTORS
 from utils.molfeat import get_molfeat_transformer
-
 
 from tdc_dataset import get_dataset
 
@@ -31,9 +27,14 @@ parser.add_argument(
     help="Dataset to use",
 )
 
-
-
-
+parser.add_argument(
+    "--descriptors",
+    type=str,
+    nargs="+",
+    default=DESCRIPTORS,
+    required=False,
+    help="List of descriptors to compute",
+)
 
 def main():
     args = parser.parse_args()
@@ -78,18 +79,20 @@ def main():
         smiles = pre_processed["smiles"].iloc[:,0].tolist()
         mols = pre_processed["mols"].tolist()
 
-    for desc in tqdm(DESCRIPTORS, position=0, desc="Descriptors"):
+    for desc in tqdm(args.descriptors, position=0, desc="Descriptors"):
         for length in tqdm(
             [256, 512, 1024, 2048], desc="Length", position=1, leave=False
         ):
             if not os.path.exists(f"data/{args.dataset}/{desc}_{length}.npy"):
                 descriptor = get_features(
-                    None, smiles, transformer_name =desc, mols=mols, length=length, dataset=args.dataset
+                    None, smiles, name =desc, mols=mols, length=length, dataset=args.dataset
                 ).numpy()
 
 
-                np.save(f"data/{args.dataset}/{desc}_{length}.npy", descriptor)
+                np.save(f"data/{args.dataset}/{desc.replace('/','_')}_{length}.npy", descriptor)
                 del descriptor
+            else:
+                print(f"data/{args.dataset}/{desc}_{length}.npy already exists")
 
 
 if __name__ == "__main__":
