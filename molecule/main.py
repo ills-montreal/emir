@@ -17,13 +17,13 @@ from tqdm import tqdm
 
 from torch_geometric.data import DataLoader
 
-from moleculenet_encoding import mol_to_graph_data_obj_simple
 from utils import get_features
 from parser_mol import (
     add_eval_cli_args,
     add_knife_args,
     generate_knife_config_from_args,
 )
+from models.model_paths import get_model_path
 from emir.estimators import KNIFEEstimator, KNIFEArgs
 
 logger = logging.getLogger(__name__)
@@ -42,17 +42,7 @@ logger.info("Logger is set.")
 
 
 def get_embedders(args: argparse.Namespace):
-    MODEL_PATH = "backbone_pretrained_models"
-    MODELS = {}
-    # For every directory in the folder
-    for model_name in os.listdir(MODEL_PATH):
-        if model_name in args.models:
-            # For every file in the directory
-            for file_name in os.listdir(os.path.join(MODEL_PATH, model_name)):
-                # If the file is a .pth file
-                if file_name.endswith(".pth"):
-                    MODELS[model_name] = os.path.join(MODEL_PATH, model_name, file_name)
-    MODELS["Not-trained"] = ""
+    MODELS = get_model_path(models=args.models)
     embeddings_fn = {}
     for model_name, model_path in MODELS.items():
         embeddings_fn[model_name] = partial(
@@ -71,6 +61,7 @@ def get_embedders(args: argparse.Namespace):
                 length=args.fp_length,
                 feature_type="descriptor",
                 device=args.device,
+                mds_dim=args.mds_dim,
             )
     for model_name in args.models:
         if not model_name in embeddings_fn:
@@ -83,7 +74,6 @@ def get_embedders(args: argparse.Namespace):
 def model_profile(
     args: argparse.Namespace,
     model_name: str,
-    dataloader: DataLoader,
     smiles: List[str],
     mols: List[dm.Mol] = None,
     marginal_kernels: Dict = {},
@@ -106,7 +96,7 @@ def model_profile(
     }
 
     model_embedding = embeddings_fn[model_name](
-        dataloader, smiles, mols=mols, dataset=args.dataset
+        smiles, mols=mols, dataset=args.dataset
     ).to(knife_config.device)
     df_losses_XY = []
     df_losses_YX = []
@@ -114,7 +104,7 @@ def model_profile(
     for desc in args.descriptors:
         mis = []
         descriptors_embedding = embeddings_fn[desc](
-            dataloader, smiles, mols=mols, dataset=args.dataset
+            smiles, mols=mols, dataset=args.dataset
         ).to(knife_config.device)
         if (
             len(descriptors_embedding.unique()) < 1500
@@ -124,14 +114,6 @@ def model_profile(
         ):
             # setting to 1 all elements different from 0
             descriptors_embedding = (descriptors_embedding != 0).float()
-
-        if args.make_continuous > 0:
-            assert args.make_continuous > 1
-            random_gaussian = GaussianRandomProjection(
-                n_components=args.make_continuous
-            )
-            descriptors_embedding = torch.tensor(random_gaussian.fit_transform(descriptors_embedding.cpu().numpy()), device=descriptors_embedding.device)
-            print(random_gaussian.n_components_)
 
         for i in range(args.n_runs):
             mi, m, c, loss, marg_ent, cond_ent, kernel_marg = get_knife_preds(
@@ -163,8 +145,8 @@ def model_profile(
                         "cond_ent": cond_ent.cpu().numpy(),
                         "epoch": range(len(loss)),
                         "run": i,
-                        "X": desc,
-                        "Y": model_name,
+                        "X": desc.replace('/','_'),
+                        "Y": model_name.replace('/','_'),
                         "direction": "X->Y",
                     }
                 )
@@ -190,8 +172,8 @@ def model_profile(
                             "cond_ent": cond_ent.cpu().numpy(),
                             "epoch": range(len(loss)),
                             "run": i,
-                            "X": desc,
-                            "Y": model_name,
+                            "X": desc.replace('/','_'),
+                            "Y": model_name.replace('/','_'),
                             "direction": "Y->X",
                         }
                     )
@@ -209,7 +191,7 @@ def model_profile(
         pd.concat(df_losses_XY).to_csv(
             os.path.join(
                 os.path.join(args.out_dir, "losses"),
-                f"{args.dataset}_{model_name}_{args.fp_length}_XY.csv",
+                f"{args.dataset}_{model_name.replace('/','_')}_{args.fp_length}_XY.csv",
             ),
             index=False,
         )
@@ -217,7 +199,7 @@ def model_profile(
         pd.concat(df_losses_YX).to_csv(
             os.path.join(
                 os.path.join(args.out_dir, "losses"),
-                f"{args.dataset}_{model_name}_{args.fp_length}_YX.csv",
+                f"{args.dataset}_{model_name.replace('/','_')}_{args.fp_length}_YX.csv",
             ),
             index=False,
         )
@@ -265,15 +247,7 @@ def main():
     else:
         mols = None
 
-    graph_input = []
-    for s in smiles:
-        graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)).to(args.device))
 
-    dataloader = DataLoader(
-        graph_input,
-        batch_size=32,
-        shuffle=False,
-    )
 
     p_bar = tqdm(
         total=len(args.models) * len(args.descriptors) * args.n_runs,
@@ -287,7 +261,6 @@ def main():
         results = model_profile(
             args,
             model_name,
-            dataloader,
             smiles,
             mols=mols,
             marginal_kernels=marginal_kernels,
@@ -296,7 +269,7 @@ def main():
 
         results.to_csv(
             os.path.join(
-                args.out_dir, f"{args.dataset}_{model_name}_{args.fp_length}.csv"
+                args.out_dir, f"{args.dataset}_{model_name.replace('/','_')}_{args.fp_length}.csv"
             ),
             index=False,
         )

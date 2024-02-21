@@ -28,7 +28,6 @@ def get_embeddings_from_transformers_batch(
 
 
 def get_embeddings_from_transformers(
-    dataloader: DataLoader,
     smiles: List[str],
     mols: Optional[List[dm.Mol]] = None,
     transformer_name: str = "graphormer",
