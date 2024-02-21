@@ -83,7 +83,6 @@ def get_molfeat_transformer(transformer_name: str, length: int = 1024):
 
 
 def physchem_descriptors(
-    dataloader: DataLoader,
     smiles: List[str],
     mols: Optional[List[dm.Mol]] = None,
     length: int = 1024,
@@ -99,7 +98,6 @@ def physchem_descriptors(
 
 
 def get_molfeat_descriptors(
-    dataloader: DataLoader,
     smiles: List[str],
     transformer_name: str,
     mols: Optional[List[dm.Mol]] = None,
@@ -111,7 +109,7 @@ def get_molfeat_descriptors(
     """
     if transformer_name == "physchem":
         molecular_embeddings = physchem_descriptors(
-            dataloader, smiles, mols=mols, length=length
+            smiles, mols=mols, length=length
         )
     else:
         transformer, threeD = get_molfeat_transformer(transformer_name, length=length)

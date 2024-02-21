@@ -1,11 +1,12 @@
 import torch_geometric.nn.pool as tgp
-
-from models.moleculenet_models import GNN
+from torch_geometric.data import DataLoader
 from typing import List, Optional
 import datamol as dm
-from torch.utils.data import DataLoader
-
 import torch
+
+from models.moleculenet_models import GNN
+from moleculenet_encoding import mol_to_graph_data_obj_simple
+
 
 MODEL_PARAMS = {
     "num_layer": 5,
@@ -18,7 +19,6 @@ MODEL_PARAMS = {
 
 @torch.no_grad()
 def get_embeddings_from_model_moleculenet(
-    dataloader: DataLoader,
     smiles: List[str],
     mols: Optional[List[dm.Mol]] = None,
     path: str = "backbone_pretrained_models/GROVER/grover.pth",
@@ -32,6 +32,17 @@ def get_embeddings_from_model_moleculenet(
     if not path == "":
         molecule_model.load_state_dict(torch.load(path))
     molecule_model.eval()
+
+    graph_input = []
+    for s in smiles:
+        graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)).to(device))
+
+    dataloader = DataLoader(
+        graph_input,
+        batch_size=32,
+        shuffle=False,
+    )
+
     for b in dataloader:
         emb = pooling_method(molecule_model(b.x, b.edge_index, b.edge_attr), b.batch)
         if normalize:

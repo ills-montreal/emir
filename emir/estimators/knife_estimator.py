@@ -129,7 +129,6 @@ class KNIFEEstimator:
         """
         if self.args.stopping_criterion == "early_stopping" and len(loss) > 1 and abs((loss[-1] - loss[-2])/(marg_ent+1e-8)) < self.args.eps:
             self.early_stop_iter += 1
-            print(self.early_stop_iter, self.args.n_epochs_stop)
             if self.early_stop_iter >= self.args.n_epochs_stop:
                 self.early_stop_iter = 0
                 return True

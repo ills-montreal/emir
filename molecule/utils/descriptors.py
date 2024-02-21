@@ -26,3 +26,9 @@ DESCRIPTORS = [
     "gobbi/3D",
     "pmapper/3D",
 ]
+
+CONTINUOUS_DESCRIPTORS = [
+    "electroshape",
+    "usr",
+    "usrcat",
+]
