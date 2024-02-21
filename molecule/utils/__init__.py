@@ -9,6 +9,7 @@ import torch_geometric.nn.pool as tgp
 from .molfeat import get_molfeat_descriptors
 from .descriptors import DESCRIPTORS, CONTINUOUS_DESCRIPTORS
 from .model_factory import ModelFactory
+from .scattering_wavelet import get_scatt_from_path
 
 
 def get_features(
@@ -24,6 +25,22 @@ def get_features(
     normalize: bool = True,
 ):
     if feature_type == "descriptor":
+        if name == "ScatteringWavelet":
+            if os.path.exists(f"data/{dataset}/scattering_wavelet.npy"):
+                molecular_embedding = torch.tensor(
+                    np.load(f"data/{dataset}/scattering_wavelet.npy"), device=device
+                )
+                assert len(molecular_embedding) == len(
+                    smiles
+                ), "The number of smiles and the number of embeddings are not the same."
+                return molecular_embedding
+            else:
+                if os.path.exists(f"data/{dataset}_3d.sdf"):
+                    molecular_embedding = get_scatt_from_path(f"data/{dataset}_3d.sdf")
+                    return molecular_embedding
+                else:
+                    raise ValueError(f"File data/{dataset}_3d.sdf does not exist.")
+
         transformer_name = name.replace("/", "_")
         if mds_dim == 0 or transformer_name in CONTINUOUS_DESCRIPTORS:
             if os.path.exists(f"data/{dataset}/{transformer_name}_{length}.npy"):
@@ -78,9 +95,9 @@ def get_features(
         )
 
         if normalize:
-            molecular_embedding = (molecular_embedding - molecular_embedding.mean(dim=0)) / (
-                molecular_embedding.std(dim=0) + 1e-8
-            )
+            molecular_embedding = (
+                molecular_embedding - molecular_embedding.mean(dim=0)
+            ) / (molecular_embedding.std(dim=0) + 1e-8)
 
         return molecular_embedding
 

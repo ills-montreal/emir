@@ -51,8 +51,6 @@ class KNIFE(nn.Module):
 
     def freeze_marginal(self):
         self.kernel_marg.requires_grad_(False)
-        print("hey")
 
     def unfreeze_marginal(self):
         self.kernel_marg.requires_grad_(True)
-        print("hey")
