@@ -12,30 +12,19 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     :param parser: argparse.ArgumentParser
     :return: argparse.ArgumentParser
     """
-    parser.add_argument("--n-runs", type=int, default=5)
+    parser.add_argument("--n-runs", type=int, default=1)
 
     parser.add_argument(
         "--models",
         type=str,
         nargs="+",
         default=[
-            "Not-trained",
-            "AttributeMask",
-            "ContextPred",
-            "EdgePred",
-            "GPT-GNN",
-            "GraphCL",
-            "GraphLog",
-            "GraphMVP",
-            "GROVER",
-            "InfoGraph",
-            "ChemBertMLM-5M",
-            "ChemBertMLM-10M",
-            "ChemBertMLM-77M",
-            "ChemBertMTR-5M",
-            "ChemBertMTR-10M",
-            "ChemBertMTR-77M",
-            "MolBert",
+            "ecfp",
+            "fcfp",
+            "topological",
+            "secfp",
+            "cats",
+            "cats/3D",
         ],
         help="List of models to compare",
     )
@@ -53,25 +42,11 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         nargs="+",
         default=[
             "ecfp",
-            "electroshape",
-            "estate",
             "fcfp",
-            "erg",
-            "rdkit",
             "topological",
-            "avalon",
-            "maccs",
             "secfp",
-            "scaffoldkeys",
-            "usr",
-            "usrcat",
-            "default",
             "cats",
-            "gobbi",
-            "pmapper",
             "cats/3D",
-            "gobbi/3D",
-            "pmapper/3D",
         ],
         help="List of descriptors to compare",
     )
@@ -92,7 +67,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
 
     parser.add_argument("--fp-length", type=int, default=2048)
     parser.add_argument("--mds-dim", type=int, default=512)
-
+    parser.add_argument("--n-jobs", type=int, default=2)
     return parser
 
 
