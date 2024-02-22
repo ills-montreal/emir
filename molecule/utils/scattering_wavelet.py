@@ -82,7 +82,7 @@ def get_scatt_embeddings(pos, valence_charges, full_charges):
     device = torch.device("cuda" if use_cuda else "cpu")
     scattering.to(device)
 
-    batch_size = 1024
+    batch_size = 8
     n_batches = int(np.ceil(n_molecules / batch_size))
 
     order_0, orders_1_and_2 = [], []

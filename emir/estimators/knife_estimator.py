@@ -53,7 +53,13 @@ class KNIFEArgs:
 
 
 class KNIFEEstimator:
-    def __init__(self, args: KNIFEArgs, x_dim: int, y_dim: int, precomputed_marg_kernel: Optional[float] = None):
+    def __init__(
+        self,
+        args: KNIFEArgs,
+        x_dim: int,
+        y_dim: int,
+        precomputed_marg_kernel: Optional[float] = None,
+    ):
         """
 
         :param args:
@@ -71,7 +77,11 @@ class KNIFEEstimator:
         self.precomputed_marg_kernel = precomputed_marg_kernel
 
     def eval(
-        self, x: torch.torch.Tensor, y: torch.torch.Tensor, record_loss: Optional[bool] = False
+        self,
+        x: torch.torch.Tensor,
+        y: torch.torch.Tensor,
+        record_loss: Optional[bool] = False,
+        fit_only_marginal: Optional[bool] = False,
     ) -> Tuple[float, float, float]:
         """
         Mutual information between x and y
@@ -94,6 +104,7 @@ class KNIFEEstimator:
         self.kernel_type = kernel_type
 
         from torch_kmeans import KMeans
+
         if self.kernel_type in ["discrete", "tanimoto", "tanimoto_delta"]:
             kmeans = KMeans(n_clusters=self.args.marg_modes, distance=TanimotoDistance)
         else:
@@ -112,7 +123,9 @@ class KNIFEEstimator:
         ).to(self.args.device)
 
         # Fit the model
-        self.fit_estimator(x, y, record_loss=record_loss)
+        self.fit_estimator(
+            x, y, record_loss=record_loss, fit_only_marginal=fit_only_marginal
+        )
 
         with torch.no_grad():
             mutual_information, marg_ent, cond_ent = self.knife(x, y)
@@ -120,14 +133,18 @@ class KNIFEEstimator:
         return mutual_information.item(), marg_ent.item(), cond_ent.item()
 
     def early_stopping(
-            self,
-            loss: List[float],
-            marg_ent: float,
+        self,
+        loss: List[float],
+        marg_ent: float,
     ) -> bool:
         """
         Check if the early stopping criterion is reached
         """
-        if self.args.stopping_criterion == "early_stopping" and len(loss) > 1 and abs((loss[-1] - loss[-2])/(marg_ent+1e-8)) < self.args.eps:
+        if (
+            self.args.stopping_criterion == "early_stopping"
+            and len(loss) > 1
+            and abs((loss[-1] - loss[-2]) / (marg_ent + 1e-8)) < self.args.eps
+        ):
             self.early_stop_iter += 1
             if self.early_stop_iter >= self.args.n_epochs_stop:
                 self.early_stop_iter = 0
@@ -136,7 +153,13 @@ class KNIFEEstimator:
             self.early_stop_iter = 0
         return False
 
-    def fit_estimator(self, x, y, record_loss: Optional[bool] = False) -> List[float]:
+    def fit_estimator(
+        self,
+        x,
+        y,
+        record_loss: Optional[bool] = False,
+        fit_only_marginal: Optional[bool] = False,
+    ) -> List[float]:
         """
         Fit the estimator to the data
         """
@@ -163,8 +186,7 @@ class KNIFEEstimator:
                     loss, _ = self.knife.kernel_marg(y)
                     marg_ent = loss
                     cond_ent = loss - loss
-                    reg = 0
-                    (loss + reg).backward()
+                    loss.backward()
                     optimizer.step()
                     epoch_loss.append(loss)
                     epoch_marg_ent.append(marg_ent)
@@ -174,38 +196,38 @@ class KNIFEEstimator:
                 self.recorded_marg_ent.append(sum(epoch_marg_ent) / len(epoch_marg_ent))
                 self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
 
-
         self.knife.freeze_marginal()
-        optimizer.param_groups[0]["lr"] = self.args.lr
-        for epoch in trange(
-            self.args.n_epochs - epochs_marg_async,
-            position=-1,
-            desc="Knife training",
-            leave=False,
-        ):
-            epoch_loss = []
-            epoch_marg_ent = []
-            epoch_cond_ent = []
-            for x_batch, y_batch in train_loader:
-                optimizer.zero_grad()
-                loss, reg, marg_ent, cond_ent = self.knife.learning_loss(
-                    x_batch, y_batch
-                )
-                (loss + reg).backward()
-                optimizer.step()
-                epoch_loss.append(loss)
-                epoch_marg_ent.append(marg_ent)
-                epoch_cond_ent.append(cond_ent)
+        if not fit_only_marginal:
+            optimizer.param_groups[0]["lr"] = self.args.lr
+            for epoch in trange(
+                self.args.n_epochs - epochs_marg_async,
+                position=-1,
+                desc="Knife training",
+                leave=False,
+            ):
+                epoch_loss = []
+                epoch_marg_ent = []
+                epoch_cond_ent = []
+                for x_batch, y_batch in train_loader:
+                    optimizer.zero_grad()
+                    loss, marg_ent, cond_ent = self.knife.learning_loss(
+                        x_batch, y_batch
+                    )
+                    loss.backward()
+                    optimizer.step()
+                    epoch_loss.append(loss)
+                    epoch_marg_ent.append(marg_ent)
+                    epoch_cond_ent.append(cond_ent)
 
-            self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
-            self.recorded_marg_ent.append(sum(epoch_marg_ent) / len(epoch_marg_ent))
-            self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
+                self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
+                self.recorded_marg_ent.append(sum(epoch_marg_ent) / len(epoch_marg_ent))
+                self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
 
-            logger.info("Epoch %d: loss = %f", epoch, self.recorded_loss[-1])
+                logger.info("Epoch %d: loss = %f", epoch, self.recorded_loss[-1])
 
-            if self.early_stopping(self.recorded_loss, marg_ent):
-                logger.info("Reached early stopping criterion")
-                break
+                if self.early_stopping(self.recorded_loss, marg_ent):
+                    logger.info("Reached early stopping criterion")
+                    break
 
 
 class FastTensorDataLoader:
@@ -258,10 +280,7 @@ class FastTensorDataLoader:
         return self.n_batches
 
 
-
-def get_num_modes_via_kmeans(
-    y, n_modes, distance = None
-):
+def get_num_modes_via_kmeans(y, n_modes, distance=None):
     """
     Get the number of modes in the data using k-means clustering
 
@@ -280,7 +299,9 @@ def get_num_modes_via_kmeans(
             kmeans = KMeans(n_clusters=n_mode)
         results = kmeans(y.unsqueeze(0), verbose=0)
         if distance is not None:
-            inertia = calculate_kmeans_inertia(y.unsqueeze(0), results.centers, results.labels, distance())
+            inertia = calculate_kmeans_inertia(
+                y.unsqueeze(0), results.centers, results.labels, distance()
+            )
         else:
             inertia = results.inertia
         all_inertias.append(inertia.item())
