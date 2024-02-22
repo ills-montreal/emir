@@ -85,6 +85,32 @@ class KNIFEEstimator:
 
         return mutual_information.item(), marg_ent.item(), cond_ent.item()
 
+    def eval_per_sample(
+        self, x: torch.Tensor, y: torch.Tensor, record_loss: Optional[bool] = False
+    ) -> Tuple[float, float, float]:
+        """
+        Mutual information between x and y
+
+        :param x: torch.Tensor
+        :param y: torch.Tensor
+        :return: Tuple[float, float, float] mutual information, marginal entropy H(X), conditional entropy H(X|Y)
+        """
+
+        # Create model for MI estimation
+        self.knife = KNIFE(self.args, self.x_dim, self.y_dim).to(self.args.device)
+
+        # Fit the model
+        self.fit_estimator(x, y, record_loss=record_loss)
+
+        # Move model back to CPU
+        self.knife = self.knife.to("cpu")
+        x, y = x.to("cpu"), y.to("cpu")
+
+        with torch.no_grad():
+            mutual_information = self.knife.pmi(x, y)
+
+        return mutual_information.squeeze().cpu().detach().numpy()
+
     def fit_estimator(self, x, y, record_loss: Optional[bool] = False) -> List[float]:
         """
         Fit the estimator to the data
