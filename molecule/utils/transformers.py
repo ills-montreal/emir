@@ -48,5 +48,4 @@ def get_embeddings_from_transformers(
             ],
             dim=0,
         )
-    print(len(smiles), all_embeddings.shape)
     return all_embeddings
