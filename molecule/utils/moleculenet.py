@@ -1,5 +1,5 @@
 import torch_geometric.nn.pool as tgp
-from torch_geometric.data import DataLoader
+from torch_geometric.loader import DataLoader
 from typing import List, Optional
 import datamol as dm
 import torch

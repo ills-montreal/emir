@@ -103,14 +103,6 @@ class KNIFEEstimator:
                 kernel_type = "gaussian"
         self.kernel_type = kernel_type
 
-        from torch_kmeans import KMeans
-
-        if self.kernel_type in ["discrete", "tanimoto", "tanimoto_delta"]:
-            kmeans = KMeans(n_clusters=self.args.marg_modes, distance=TanimotoDistance)
-        else:
-            kmeans = KMeans(n_clusters=self.args.marg_modes)
-        results = kmeans(y[:].unsqueeze(0), verbose=0)
-        init_samples = results.centers
 
         self.knife = KNIFE(
             self.args,
@@ -118,7 +110,6 @@ class KNIFEEstimator:
             self.y_dim,
             kernel_type=kernel_type,
             reg_conf=self.args.mean_sep,
-            init_samples=init_samples,
             precomputed_marg_kernel=self.precomputed_marg_kernel,
         ).to(self.args.device)
 
@@ -175,9 +166,7 @@ class KNIFEEstimator:
         optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.async_lr)
 
         if self.precomputed_marg_kernel is None:
-            for epoch in trange(
-                epochs_marg_async, position=-1, desc="Knife training", leave=False
-            ):
+            for epoch in range(epochs_marg_async):
                 epoch_loss = []
                 epoch_marg_ent = []
                 epoch_cond_ent = []
@@ -199,12 +188,7 @@ class KNIFEEstimator:
         self.knife.freeze_marginal()
         if not fit_only_marginal:
             optimizer.param_groups[0]["lr"] = self.args.lr
-            for epoch in trange(
-                self.args.n_epochs - epochs_marg_async,
-                position=-1,
-                desc="Knife training",
-                leave=False,
-            ):
+            for epoch in range(self.args.n_epochs - epochs_marg_async):
                 epoch_loss = []
                 epoch_marg_ent = []
                 epoch_cond_ent = []
