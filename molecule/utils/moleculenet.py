@@ -35,7 +35,11 @@ def get_embeddings_from_model_moleculenet(
 
     graph_input = []
     for s in smiles:
-        graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)).to(device))
+        try:
+            graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)).to(device))
+        except Exception as e:
+            print(f"Failed to convert {s} to graph data object.")
+            raise e
 
     dataloader = DataLoader(
         graph_input,

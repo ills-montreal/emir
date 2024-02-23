@@ -56,12 +56,13 @@ def main():
         valid_smiles = []
         valid_mols = []
         for i, s in enumerate(tqdm(smiles, desc="Generating graphs")):
-            try:
-                graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)))
-                valid_smiles.append(s)
-                valid_mols.append(mols[i])
-            except:
-                pass
+            if not "." in s:
+                try:
+                    graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)))
+                    valid_smiles.append(s)
+                    valid_mols.append(mols[i])
+                except:
+                    pass
         smiles = valid_smiles
         mols = valid_mols
         if not os.path.exists(f"data/{args.dataset}"):
