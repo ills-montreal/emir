@@ -9,11 +9,13 @@ from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians
 from kymatio.scattering3d.backend.torch_backend import TorchBackend3D
 from kymatio.torch import HarmonicScattering3D
 
+from tqdm import trange
+
 overlapping_precision = 1e-1
 sigma = 2.0
 
 
-def get_positions_charges_from_path(path: str):
+def get_positions_charges_from_path(path: str, i0, i1):
     """
     Get the positions and charges of the atoms from a file.
 
@@ -23,6 +25,7 @@ def get_positions_charges_from_path(path: str):
     :return: Tuple[torch.Tensor, torch.Tensor]
     """
     mols = dm.read_sdf(path)
+    mols = mols[i0 : min(i1, len(mols))]
     n_molecules = len(mols)
 
     max_atoms = 0
@@ -57,6 +60,13 @@ def get_positions_charges_from_path(path: str):
         n_atoms = np.sum(full_charges[i] != 0)
         pos_i = pos[i, :n_atoms, :]
         min_dist = min(min_dist, pdist(pos_i).min())
+        if min_dist == 0:
+            print(i)
+            print(pos_i)
+            print(pdist(pos_i))
+            print(pdist(pos_i).min())
+            print(min_dist)
+            time.sleep(1)
 
     delta = sigma * np.sqrt(-8 * np.log(overlapping_precision))
     pos = pos * delta / min_dist
@@ -98,25 +108,7 @@ def get_scatt_embeddings(pos, valence_charges, full_charges):
         )
     )
 
-    this_time = None
-    last_time = None
-    for i in range(n_batches):
-        this_time = time.time()
-        if last_time is not None:
-            dt = this_time - last_time
-            print(
-                "Iteration {} ETA: [{:02}:{:02}:{:02}]".format(
-                    i + 1,
-                    int(((n_batches - i - 1) * dt) // 3600),
-                    int((((n_batches - i - 1) * dt) // 60) % 60),
-                    int(((n_batches - i - 1) * dt) % 60),
-                )
-            )
-        else:
-            print("Iteration {} ETA: {}".format(i + 1, "-"))
-        last_time = this_time
-        time.sleep(1)
-
+    for i in trange(n_batches):
         # Extract the current batch.
         start = i * batch_size
         end = min(start + batch_size, n_molecules)
@@ -185,8 +177,8 @@ def get_scatt_embeddings(pos, valence_charges, full_charges):
     )
 
 
-def get_scatt_from_path(path: str):
-    pos, valence_charges, full_charges = get_positions_charges_from_path(path)
+def get_scatt_from_path(path: str, i0, i1):
+    pos, valence_charges, full_charges = get_positions_charges_from_path(path, i0, i1)
     return get_scatt_embeddings(pos, valence_charges, full_charges)
 
 
@@ -194,11 +186,13 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="HIV")
+    parser.add_argument("--dataset", type=str, default="ClinTox")
+    parser.add_argument("--i0", type=int, default=0)
+    parser.add_argument("--i1", type=int, default=500)
     args = parser.parse_args()
-    path = f"data/{args.dataset}_3d.sdf"
+    path = f"data/{args.dataset}/preprocessed.sdf"
     print("Computing scattering wavelet...")
-    scatt = get_scatt_from_path(path)
-    np.save(f"data/{args.dataset}/scattering_wavelet.npy", scatt)
+    scatt = get_scatt_from_path(path, args.i0, args.i1)
+    np.save(f"data/{args.dataset}/scattering_wavelet_{args.i0}_{args.i1}.npy", scatt)
 
     print("Done.")

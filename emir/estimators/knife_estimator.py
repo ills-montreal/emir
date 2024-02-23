@@ -48,7 +48,6 @@ class KNIFEArgs:
     ff_layers: int = 2
     mean_sep: float = 1e1
     delta_kernel: bool = False
-    async_prop_training: float = 0.0
     async_lr: float = 0.1
 
 
@@ -162,11 +161,10 @@ class KNIFEEstimator:
             y,
             batch_size=self.args.batch_size,
         )
-        epochs_marg_async = int(self.args.n_epochs * self.args.async_prop_training)
         optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.async_lr)
 
         if self.precomputed_marg_kernel is None:
-            for epoch in range(epochs_marg_async):
+            for epoch in range(self.args.n_epochs):
                 epoch_loss = []
                 epoch_marg_ent = []
                 epoch_cond_ent = []
@@ -188,7 +186,7 @@ class KNIFEEstimator:
         self.knife.freeze_marginal()
         if not fit_only_marginal:
             optimizer.param_groups[0]["lr"] = self.args.lr
-            for epoch in range(self.args.n_epochs - epochs_marg_async):
+            for epoch in range(self.args.n_epochs):
                 epoch_loss = []
                 epoch_marg_ent = []
                 epoch_cond_ent = []
