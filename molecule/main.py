@@ -40,6 +40,9 @@ def main():
     parser = add_knife_args(parser)
     args = parser.parse_args()
 
+    # Update the wandb config with the args specified in the command line
+    wandb.config.update(args)
+
     assert os.path.exists(
         f"data/{args.dataset}/smiles.json"
     ), "Please run precompute_molf_descriptors.py first."
