@@ -3,7 +3,7 @@
 This directory contains the code to use EMIR for molecular data. The code is written in Python and uses the RDKit/Datamol library\cite{} to handle molecular data.
 The datasets are imported from the Therapeutic Data Commons (TDC) plateform\cite{}.
 
-## Installation
+## :clipboard: Installation
 
 To install the required packages, you can use the following command:
 
@@ -11,7 +11,7 @@ To install the required packages, you can use the following command:
 pip install -r requirements.txt # TOCHANGE
 ```
 
-## Data Preprocessing
+## :file_folder: Data Preprocessing
 Various descriptors use a 3-dimensional representation of the molecules. 
 To generate these representations, we use the [precompute_3D.py](precompute_3D.py) script.
 ```bash
@@ -32,5 +32,5 @@ python precompute_wavelet.py --dataset <dataset_name> --i0 <i0> --i1 <i1>
 
 Where i0 and i1 are the indices of the first and last molecule to process, used for parallelization.
 
-## EMIR
+## :chart_with_upwards_trend: EMIR
 
