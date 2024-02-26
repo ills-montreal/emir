@@ -183,4 +183,4 @@ molecule/data/*
 molecule/results.csv
 *wandb*
 molecule/fig/*
-molecule/results**
+molecule/results/*
