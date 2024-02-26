@@ -46,7 +46,10 @@ parser.add_argument(
 if __name__ == "__main__":
     args = parser.parse_args()
     df = get_dataset(args.dataset)
-
-    smiles = df["Drug"].tolist()
+    keys = df.keys()
+    if "Drug" in keys:
+        smiles = df["Drug"].tolist()
+    else:
+        smiles = df["smiles"].tolist()
     mols = None
     _ = precompute_3d(smiles, args.dataset)
