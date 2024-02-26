@@ -7,10 +7,10 @@ import argparse
 import json
 
 from utils import get_features
-from moleculenet_encoding import mol_to_graph_data_obj_simple
 from precompute_3d import precompute_3d
-from utils.descriptors import DESCRIPTORS
+from utils.descriptors import DESCRIPTORS, can_be_2d_input
 from utils.molfeat import get_molfeat_transformer
+
 
 from tdc_dataset import get_dataset
 
@@ -36,6 +36,9 @@ parser.add_argument(
     help="List of descriptors to compute",
 )
 
+
+
+
 def main():
     args = parser.parse_args()
     if not os.path.exists(f"data/{args.dataset}/preprocessed.sdf"):
@@ -52,17 +55,13 @@ def main():
             smiles = np.array(smiles)[valid_id]
             mols = np.array(mols)[valid_id]
 
-        graph_input = []
         valid_smiles = []
         valid_mols = []
         for i, s in enumerate(tqdm(smiles, desc="Generating graphs")):
-            if not "." in s:
-                try:
-                    graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)))
-                    valid_smiles.append(s)
-                    valid_mols.append(mols[i])
-                except:
-                    pass
+            if can_be_2d_input(s, mols[i]):
+                valid_smiles.append(s)
+                valid_mols.append(mols[i])
+
         smiles = valid_smiles
         mols = valid_mols
         if not os.path.exists(f"data/{args.dataset}"):

@@ -1,3 +1,6 @@
+from moleculenet_encoding import mol_to_graph_data_obj_simple
+
+
 DESCRIPTORS = [
     "usrcat",
     "electroshape",
@@ -32,3 +35,13 @@ CONTINUOUS_DESCRIPTORS = [
     "usr",
     "usrcat",
 ]
+
+
+def can_be_2d_input(smiles, mol):
+    if not "." in smiles:
+        try:
+            _ = mol_to_graph_data_obj_simple(mol)
+            return True
+        except:
+            pass
+    return False
