@@ -179,8 +179,16 @@ cython_debug/
 
 # Molecular Models
 molecule/backbone_pretrained_models/*
-molecule/data/*
+
+molecule/data/**json
+molecule/data/**csv
+molecule/data/**tab
+molecule/data/**sdf
+molecule/data/**npy
+molecule/data/**pkl
+
 molecule/results.csv
+
 *wandb*
 molecule/fig/*
 molecule/results/**.csv
