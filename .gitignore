@@ -192,3 +192,4 @@ molecule/results.csv
 *wandb*
 molecule/fig/*
 molecule/results/**.csv
+molecule/results/losses/**.csv
