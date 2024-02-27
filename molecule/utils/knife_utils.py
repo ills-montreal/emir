@@ -30,6 +30,8 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+import wandb
+
 
 def get_embedders(args: argparse.Namespace):
     all_embedders = args.descriptors + args.models
@@ -45,7 +47,10 @@ def get_embedders(args: argparse.Namespace):
             device=args.device,
         )
     for model_name in all_embedders:
-        if not model_name in embeddings_fn and model_name in PIPELINE_CORRESPONDANCY.keys():
+        if (
+            not model_name in embeddings_fn
+            and model_name in PIPELINE_CORRESPONDANCY.keys()
+        ):
             embeddings_fn[model_name] = partial(
                 get_features, name=model_name, feature_type="model", device=args.device
             )
@@ -59,7 +64,6 @@ def get_embedders(args: argparse.Namespace):
                 device=args.device,
                 mds_dim=args.mds_dim,
             )
-
 
     return embeddings_fn
 
@@ -106,15 +110,15 @@ def get_knife_marg_kernel(
         x.float(), x.float(), record_loss=True, fit_only_marginal=True
     )
     marg_ent = torch.tensor(knife_estimator.recorded_marg_ent, device="cpu")
-
-    pd.DataFrame(
+    df_run_marg_kernel = pd.DataFrame(
         {
             "marg_ent": marg_ent.cpu().numpy(),
             "epoch": range(len(marg_ent)),
             "run": 0,
             "X": emb_key.replace("/", "_"),
         }
-    ).to_csv(
+    )
+    df_run_marg_kernel.to_csv(
         os.path.join(
             os.path.join(args.out_dir, "losses"),
             f"{args.dataset}_{emb_key.replace('/','_')}_{args.fp_length}_marg.csv",
@@ -243,7 +247,6 @@ def model_profile(
         df_losses_YX = None
     results = pd.DataFrame(results)
 
-
     return (model_name, (results, df_losses_XY, df_losses_YX))
 
 
@@ -267,12 +270,14 @@ def compute_all_mi(
         mols=mols,
         args=args,
     )
+
+
     all_embedders = args.descriptors + args.models
     with Pool(args.n_jobs) as p:
         all_marginal_kernels = list(
             tqdm(p.imap(marginal_fn, all_embedders), total=len(all_embedders))
         )
-
+    log_concatenated_tables_from_dir(os.path.join(args.out_dir, "losses"), "marginals", ["_marg.csv"])
     logger.info("All marginal kernels computed")
     for marginal_kernel in all_marginal_kernels:
         marginal_kernels.update(marginal_kernel)
@@ -289,9 +294,11 @@ def compute_all_mi(
     all_combinaisons = list(product(args.models, args.descriptors))
     with Pool(args.n_jobs) as p:
         results = list(
-            tqdm(p.imap(model_profile_partial, all_combinaisons), total=len(all_combinaisons))
+            tqdm(
+                p.imap(model_profile_partial, all_combinaisons),
+                total=len(all_combinaisons),
+            )
         )
-
 
     # save all df by concatenating those with the same model_name
     concatenated_df = {}
@@ -328,6 +335,14 @@ def compute_all_mi(
             ),
             index=False,
         )
+        wandb.log(
+            {
+                f"{model_name.replace('/', '_')}_{args.fp_length}": wandb.Table(
+                    dataframe=df
+                )
+            }
+        )
+
     for model_name, df in concatenated_df_XY.items():
         if not df.empty:
             df.to_csv(
@@ -336,6 +351,15 @@ def compute_all_mi(
                     f"{args.dataset}_{model_name.replace('/','_')}_{args.fp_length}_XY.csv",
                 ),
                 index=False,
+            )
+            ratio = df.shape[0] // 20000 + 1
+            df = df[df.epoch % ratio == 0]
+            wandb.log(
+                {
+                    f"{model_name.replace('/', '_')}_{args.fp_length}_XY": wandb.Table(
+                        dataframe=df
+                    )
+                }
             )
     for model_name, df in concatenated_df_YX.items():
         if not df.empty:
@@ -346,5 +370,32 @@ def compute_all_mi(
                 ),
                 index=False,
             )
+            ratio = df.shape[0] // 20000 + 1
+            df = df[df.epoch % ratio == 0]
+            wandb.log(
+                {
+                    f"{model_name.replace('/', '_')}_{args.fp_length}_YX": wandb.Table(
+                        dataframe=df
+                    )
+                }
+            )
 
-    return pd.concat([r[0] for _,r in results])
+    return pd.concat([r[0] for _, r in results])
+
+
+def log_concatenated_tables_from_dir(path: str, name, template=["_marg.csv"]):
+    all_dfs = []
+    for file in os.listdir(path):
+        for t in template:
+            if file.endswith(t):
+                all_dfs.append(pd.read_csv(os.path.join(path, file)))
+    df = pd.concat(all_dfs)
+    if df.shape[0] > 20000:
+        ratio = df.shape[0] // 20000 + 1
+        df = df[df.epoch % ratio == 0]
+    wandb.log(
+        {
+            name: wandb.Table(dataframe=df)
+        }
+    )
+    print(f"Logged {name} table")

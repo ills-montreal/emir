@@ -2,9 +2,9 @@ from typing import Literal, Tuple
 
 from .kernels import BaseMargKernel, BaseCondKernel
 
-from .gaussian_kernel import GaussianMargKernel, GaussianCondKernel, GaussianCondKernelDelta
+from .gaussian_kernel import GaussianMargKernel, GaussianCondKernel
 from .discrete_kernels import DiscreteCondKernel, DiscreteMargKernel
-from .tanimoto_kernels import TanimotoCondKernel, TanimotoMargKernel, TanimotoCondKernelDelta
+from .tanimoto_kernels import TanimotoCondKernel, TanimotoMargKernel
 
 
 class KernelFactory:
@@ -17,11 +17,7 @@ class KernelFactory:
             return GaussianMargKernel(**kwargs), GaussianCondKernel(**kwargs)
         elif kernel == "discrete":
             return DiscreteMargKernel(**kwargs), DiscreteCondKernel(**kwargs)
-        elif kernel == "gaussian_delta":
-            return GaussianMargKernel(**kwargs), GaussianCondKernelDelta(**kwargs)
         elif kernel == "tanimoto":
             return TanimotoMargKernel(**kwargs), TanimotoCondKernel(**kwargs)
-        elif kernel == "tanimoto_delta":
-            return TanimotoMargKernel(**kwargs), TanimotoCondKernelDelta(**kwargs)
         else:
             raise ValueError(f"Kernel {kernel} not implemented")

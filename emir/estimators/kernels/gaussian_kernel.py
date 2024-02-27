@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 
-from .kernels import BaseMargKernel, BaseCondKernel, BaseCondKernelDelta
+from .kernels import BaseMargKernel, BaseCondKernel
 from .feed_forward import FF
 
 
@@ -70,7 +70,7 @@ class GaussianMargKernel(BaseMargKernel):
 
         y = -y / 2 + torch.sum(torch.log(torch.abs(var) + 1e-8), dim=-1) + w
         y = torch.logsumexp(y, dim=-1)
-        return self.logC.to(y.device) + y, self.means
+        return self.logC.to(y.device) + y
 
     def update_parameters(self, z):
         self.means = z
@@ -117,55 +117,5 @@ class GaussianCondKernel(BaseCondKernel):
 
         z = -z / 2 + torch.log(torch.abs(var) + 1e-8).sum(-1) + w
         z = torch.logsumexp(z, dim=-1)
-        return self.logC.to(z.device) + z, mu
+        return self.logC.to(z.device) + z
 
-
-
-class GaussianCondKernelDelta(BaseCondKernelDelta):
-    """
-    Used to compute p(z_d | z_c)
-    """
-
-    def __init__(self, args, zc_dim, zd_dim, **kwargs):
-        super().__init__(args, zc_dim, zd_dim)
-        self.K = args.cond_modes
-        self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)], device=args.device)
-
-        self.mu = FF(args, zc_dim, self.d, self.K * zd_dim)
-        self.logvar = FF(args, zc_dim, self.d, self.K * zd_dim)
-
-        self.weight = FF(args, zc_dim, self.d, self.K)
-        self.tri = None
-        if args.cov_off_diagonal == "var":
-            self.tri = FF(args, zc_dim, self.d, self.K * zd_dim**2)
-
-    def logpdf(self, z_c, z_d, params_marg):  # H(z_d|z_c)
-        mu_marg = params_marg[0]
-        logvar_marg = params_marg[1]
-        weights_marg = params_marg[2]
-        if self.tri is not None:
-            tri_marg = params_marg[3]
-
-        z_d = z_d[:, None, :]  # [N, 1, d]
-
-        w = torch.log_softmax(self.weight(z_c) + weights_marg, dim=-1)  # [N, K]
-        mu = self.mu(z_c)
-        logvar = self.logvar(z_c).reshape(-1, self.K, self.d) + logvar_marg
-        if self.use_tanh:
-            logvar = logvar.tanh()
-        var = logvar.exp()
-        mu = mu.reshape(-1, self.K, self.d)  + mu_marg
-        # print(f"Cond : {var.min()} | {var.max()} | {var.mean()}")
-
-        z = z_d - mu  # [N, K, d]
-        z = var * z
-        if self.tri is not None:
-            tri = self.tri(z_c).reshape(-1, self.K, self.d, self.d) + tri_marg
-            z = z + torch.squeeze(
-                torch.matmul(torch.tril(tri, diagonal=-1), z[:, :, :, None]), 3
-            )
-        z = torch.sum(z**2, dim=-1)  # [N, K]
-
-        z = -z / 2 + torch.log(torch.abs(var) + 1e-8).sum(-1) + w
-        z = torch.logsumexp(z, dim=-1)
-        return self.logC + z, mu

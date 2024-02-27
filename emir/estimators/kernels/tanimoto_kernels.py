@@ -9,7 +9,7 @@ import torch.nn as nn
 
 from ..distances import TanimotoDistance
 from .feed_forward import FF
-from .kernels import BaseMargKernel, BaseCondKernel, BaseCondKernelDelta
+from .kernels import BaseMargKernel, BaseCondKernel
 from line_profiler_pycharm import profile
 
 
@@ -70,7 +70,7 @@ class TanimotoMargKernel(BaseMargKernel):
         y = -dist * var + torch.log(var + 1e-8) + w
         y = torch.logsumexp(y, dim=-1)
 
-        return y, mu
+        return y
 
     def update_parameters(self, z):
         self.means = z
@@ -116,55 +116,5 @@ class TanimotoCondKernel(BaseCondKernel):
         y = -dist * var + torch.log(var + 1e-8) + w
         y = torch.logsumexp(y, dim=-1)
 
-        return y, mu
+        return y
 
-
-class TanimotoCondKernelDelta(BaseCondKernelDelta):
-    """
-    Used to compute p(z_d | z_if args.cov_off_diagonal == "var":
-            tri = self.init_std * torch.randn((1, self.K, self.d, self.d))
-            tri = tri.to(init_samples.dtype)
-            self.tri = nn.Parameter(tri, requires_grad=True)
-        else:
-            self.tri = Nonec)
-    """
-
-    def __init__(self, args, zc_dim, zd_dim, layers=1, **kwargs):
-        super().__init__(args, zc_dim, zd_dim)
-        self.K = args.cond_modes
-        self.mu = FF(args, zc_dim, self.d, self.K * zd_dim)
-        self.weight = FF(args, zc_dim, self.d, self.K)
-        self.logvar = FF(args, zc_dim, self.d, self.K)
-        self.kernel_temp = 100
-        self.distances = TanimotoDistance()
-        self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)])
-
-    @profile
-    def logpdf(self, z_c, z_d, params_marg):  # H(z_d|z_c)
-        mu_marg = params_marg[0]
-        logvar_marg = params_marg[1]
-        weights_marg = params_marg[2]
-
-        z_d = z_d[:, None, :]  # [N, 1, d]
-        dw = self.weight(z_c)
-        w = torch.log_softmax(dw, dim=-1)  # [N, K]
-
-        dmu = self.mu(z_c)
-        mu = mu_marg + dmu.reshape(-1, self.K, self.d)
-        mu = torch.sigmoid(mu * self.kernel_temp)  # [N, K, d]
-
-        dlogvar = self.logvar(z_c)
-        logvar =  logvar_marg + dlogvar
-        if self.use_tanh:
-            logvar = logvar.tanh()
-        var = logvar.exp().reshape(-1, self.K)*10
-
-        # compute logpdf of exponential law on the distance
-        mult = (z_d * mu).sum(dim=-1)
-        diff = ((z_d - mu) ** 2).sum(dim=-1)
-        dist = 1 - mult / (diff + mult + 1e-8)
-
-        y = -dist * var + torch.log(var + 1e-8) + w
-        y = torch.logsumexp(y, dim=-1)
-
-        return y, mu

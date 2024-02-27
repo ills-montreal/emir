@@ -42,12 +42,17 @@ parser.add_argument(
 def main():
     args = parser.parse_args()
     if not os.path.exists(f"data/{args.dataset}/preprocessed.sdf"):
-        df = get_dataset(args.dataset)
-
-        smiles = df["Drug"].tolist()
-        mols = None
-
-        mols, smiles = precompute_3d(smiles, args.dataset)
+        if os.path.exists(f"data/{args.dataset}_3d.sdf"):
+            print(f"Loading 3D conformers from data/{args.dataset}_3d.sdf")
+            mols, smiles = precompute_3d(None, args.dataset)
+        else:
+            df = get_dataset(args.dataset)
+            if "Drug" in df.columns:
+                smiles = df["Drug"].tolist()
+            else:
+                smiles = df["smiles"].tolist()
+            mols = None
+            mols, smiles = precompute_3d(smiles, args.dataset)
         # Removing molecules that cannot be featurized
         for t_name in ["usr", "electroshape", "usrcat"]:
             transformer, thrD = get_molfeat_transformer(t_name)
@@ -81,11 +86,11 @@ def main():
 
     for desc in tqdm(args.descriptors, position=0, desc="Descriptors"):
         for length in tqdm(
-            [256, 512, 1024, 2048], desc="Length", position=1, leave=False
+            [1024, 2048], desc="Length", position=1, leave=False
         ):
             if not os.path.exists(f"data/{args.dataset}/{desc}_{length}.npy"):
                 descriptor = get_features(
-                    None, smiles, name =desc, mols=mols, length=length, dataset=args.dataset
+                    smiles, name =desc, mols=mols, length=length, dataset=args.dataset
                 ).numpy()
 
 
