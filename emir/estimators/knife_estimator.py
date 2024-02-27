@@ -47,7 +47,6 @@ class KNIFEArgs:
     ff_layer_norm: bool = True
     ff_layers: int = 2
     mean_sep: float = 1e1
-    delta_kernel: bool = False
     async_lr: float = 0.1
 
 
@@ -93,13 +92,8 @@ class KNIFEEstimator:
         # Create model for MI estimation
         if (y == 0).logical_or(y == 1).all():
             kernel_type = "tanimoto"
-            if self.args.delta_kernel:
-                kernel_type = "tanimoto_delta"
         else:
-            if self.args.delta_kernel:
-                kernel_type = "gaussian_delta"
-            else:
-                kernel_type = "gaussian"
+            kernel_type = "gaussian"
         self.kernel_type = kernel_type
 
 
@@ -170,7 +164,7 @@ class KNIFEEstimator:
                 epoch_cond_ent = []
                 for x_batch, y_batch in train_loader:
                     optimizer.zero_grad()
-                    loss, _ = self.knife.kernel_marg(y)
+                    loss = self.knife.kernel_marg(y)
                     marg_ent = loss
                     cond_ent = loss - loss
                     loss.backward()
@@ -260,31 +254,3 @@ class FastTensorDataLoader:
 
     def __len__(self):
         return self.n_batches
-
-
-def get_num_modes_via_kmeans(y, n_modes, distance=None):
-    """
-    Get the number of modes in the data using k-means clustering
-
-    :param y: torch.Tensor
-    :param n_modes: int
-    :param distance: Optional[Callable]
-    :return: Tuple[torch.Tensor, torch.Tensor]
-    """
-    from torch_kmeans import KMeans
-
-    all_inertias = []
-    for n_mode in n_modes:
-        if distance is not None:
-            kmeans = KMeans(n_clusters=n_mode, distance=distance)
-        else:
-            kmeans = KMeans(n_clusters=n_mode)
-        results = kmeans(y.unsqueeze(0), verbose=0)
-        if distance is not None:
-            inertia = calculate_kmeans_inertia(
-                y.unsqueeze(0), results.centers, results.labels, distance()
-            )
-        else:
-            inertia = results.inertia
-        all_inertias.append(inertia.item())
-    return all_inertias

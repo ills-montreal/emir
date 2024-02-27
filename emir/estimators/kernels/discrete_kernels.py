@@ -45,7 +45,7 @@ class DiscreteMargKernel(BaseMargKernel):
         mu = torch.sigmoid(self.means * self.kernel_temp)
         y = x * torch.log(mu + 1e-8) + (1 - x) * torch.log(1 - mu + 1e-8)  # [N, K, d]
         y = torch.logsumexp(y.sum(dim=-1) + w, dim=-1)
-        return y, mu
+        return y
 
     def update_parameters(self, z):
         self.means = z
@@ -79,5 +79,5 @@ class DiscreteCondKernel(BaseCondKernel):
             1 - mu + 1e-8
         )  # [N, K, d]
         z = torch.logsumexp(z.sum(dim=-1) + w, dim=-1)
-        return z, mu
+        return z
 

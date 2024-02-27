@@ -8,28 +8,35 @@ from typing import List, Tuple, Optional
 from tdc_dataset import get_dataset
 from utils.descriptors import can_be_2d_input
 
+import pathos.multiprocessing as mp
 
-def precompute_3d(smiles: List[str], dataset_name: str = "tox21"):
+
+def compute_3d(smiles: str):
+    try:
+        mol = dm.conformers.generate(
+            dm.to_mol(smiles), align_conformers=True, ignore_failure=True, num_threads=8, n_confs=5
+        )
+        return mol
+    except Exception as e:
+        print(e)
+        return None
+
+
+
+
+def precompute_3d(smiles: List[str], dataset_name: str = "tox21", n_jobs: int = 4):
     if os.path.exists(f"data/{dataset_name}_3d.sdf"):
         mols = dm.read_sdf(f"data/{dataset_name}_3d.sdf")
         smiles = [dm.to_smiles(m, True, False) for m in mols]
         return mols, smiles
 
     mols = []
-    for s in tqdm(smiles, desc="Generating conformers"):
-        if can_be_2d_input(s, dm.to_mol(s)):
-            try:
-                mol = dm.conformers.generate(
-                    dm.to_mol(s), align_conformers=True, ignore_failure=True, num_threads=4, n_confs=5
-                )
+    with mp.ProcessingPool(n_jobs) as pool:
+        for mol in tqdm(pool.uimap(compute_3d, smiles), total=len(smiles)):
+            if mol is not None:
                 mols.append(mol)
-            except Exception as e:
-                print(e)
-                pass
-
 
     dm.to_sdf(mols, f"data/{dataset_name}_3d.sdf")
-
     return mols, smiles
 
 
@@ -43,6 +50,13 @@ parser.add_argument(
     default="HIV",
     required=False,
     help="Dataset to use",
+)
+parser.add_argument(
+    "--n-jobs",
+    type=int,
+    default=4,
+    required=False,
+    help="Number of jobs to use",
 )
 
 if __name__ == "__main__":

@@ -35,28 +35,16 @@ class KNIFE(nn.Module):
         self.reg_conf = reg_conf
 
     def run_kernels(self, z_c, z_d):
-        marg_ent, marg_means = self.kernel_marg(z_d)
-        if "delta" in self.kernel_type:
-            cond_ent, cond_means = self.kernel_cond(
-                z_c,
-                z_d,
-                (
-                    self.kernel_marg.means,
-                    self.kernel_marg.logvar,
-                    self.kernel_marg.weigh,
-                    self.kernel_marg.tri,
-                ),
-            )
-        else:
-            cond_ent, cond_means = self.kernel_cond(z_c, z_d)
-        return marg_ent, cond_ent, marg_means, cond_means
+        marg_ent = self.kernel_marg(z_d)
+        cond_ent = self.kernel_cond(z_c, z_d)
+        return marg_ent, cond_ent
 
     def forward(self, z_c, z_d):  # samples have shape [sample_size, dim]
-        marg_ent, cond_ent, _, _ = self.run_kernels(z_c, z_d)
+        marg_ent, cond_ent = self.run_kernels(z_c, z_d)
         return marg_ent - cond_ent, marg_ent, cond_ent
 
     def learning_loss(self, z_c, z_d):
-        marg_ent, cond_ent, marg_means, cond_means = self.run_kernels(z_c, z_d)
+        marg_ent, cond_ent = self.run_kernels(z_c, z_d)
         return marg_ent + cond_ent, marg_ent, cond_ent
 
     def I(self, *args, **kwargs):
