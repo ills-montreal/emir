@@ -5,9 +5,7 @@ from typing import Tuple, List, Optional, Literal
 import torch
 from tqdm import tqdm, trange
 
-
 from .knife import KNIFE
-from .distances import TanimotoDistance, calculate_kmeans_inertia
 
 
 logger = logging.getLogger(__name__)
@@ -46,7 +44,6 @@ class KNIFEArgs:
     ff_activation: str = "relu"
     ff_layer_norm: bool = True
     ff_layers: int = 2
-    mean_sep: float = 1e1
     async_lr: float = 0.1
 
 
@@ -84,8 +81,8 @@ class KNIFEEstimator:
         """
         Mutual information between x and y
 
-        :param x: torch.torch.Tensor
-        :param y: torch.torch.Tensor
+        :param x: torch.Tensor
+        :param y: torch.Tensor
         :return: Tuple[float, float, float] mutual information, marginal entropy H(X), conditional entropy H(X|Y)
         """
 
@@ -148,8 +145,6 @@ class KNIFEEstimator:
         Fit the estimator to the data
         """
 
-        optimizer = torch.optim.AdamW(self.knife.parameters(), lr=self.args.lr)
-
         train_loader = FastTensorDataLoader(
             x,
             y,
@@ -189,7 +184,7 @@ class KNIFEEstimator:
                     loss, marg_ent, cond_ent = self.knife.learning_loss(
                         x_batch, y_batch
                     )
-                    loss.backward()
+                    cond_ent.backward()
                     optimizer.step()
                     epoch_loss.append(loss)
                     epoch_marg_ent.append(marg_ent)

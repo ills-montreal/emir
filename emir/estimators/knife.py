@@ -17,7 +17,6 @@ class KNIFE(nn.Module):
         zc_dim,
         zd_dim,
         kernel_type="gaussian",
-        reg_conf=1e1,
         init_samples=None,
         precomputed_marg_kernel=None,
     ):
@@ -32,7 +31,6 @@ class KNIFE(nn.Module):
         )
         if precomputed_marg_kernel is not None:
             self.kernel_marg = precomputed_marg_kernel.to(args.device)
-        self.reg_conf = reg_conf
 
     def run_kernels(self, z_c, z_d):
         marg_ent = self.kernel_marg(z_d)

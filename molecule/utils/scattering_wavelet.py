@@ -4,6 +4,7 @@ from rdkit import Chem
 import numpy as np
 import torch
 import time
+import torch
 
 from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians
 from kymatio.scattering3d.backend.torch_backend import TorchBackend3D
@@ -14,6 +15,7 @@ from tqdm import trange
 overlapping_precision = 1e-1
 sigma = 2.0
 
+torch.set_num_threads(int(os.environ['SLURM_CPUS_PER_TASK']))
 
 def get_positions_charges_from_path(path: str, i0, i1):
     """
@@ -189,10 +191,11 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default="ClinTox")
     parser.add_argument("--i0", type=int, default=0)
     parser.add_argument("--i1", type=int, default=500)
+    parser.add_argument("--out-dir", type=str, default="data/{}".format(args.dataset))
     args = parser.parse_args()
     path = f"data/{args.dataset}/preprocessed.sdf"
     print("Computing scattering wavelet...")
     scatt = get_scatt_from_path(path, args.i0, args.i1)
-    np.save(f"data/{args.dataset}/scattering_wavelet_{args.i0}_{args.i1}.npy", scatt)
+    np.save(f"{args.out_dir}/scattering_wavelet_{args.i0}_{args.i1}.npy", scatt)
 
     print("Done.")
