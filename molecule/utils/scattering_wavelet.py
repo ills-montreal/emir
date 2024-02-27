@@ -198,6 +198,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     path = f"data/{args.dataset}/preprocessed.sdf"
     print("Computing scattering wavelet...")
+    print(f"Dataset: {args.dataset}")
+    print(f"Start index: {args.i_start}")
+    print(f"Number of molecules: {args.n_mols}")
     scatt = get_scatt_from_path(path, args.i_start, args.i_start + args.n_mols)
     save_path = os.path.join(args.out_dir, args.dataset)
     os.makedirs(save_path, exist_ok=True)
