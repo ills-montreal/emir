@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=precompute-3d
 #SBATCH --account=def-ibenayed
-#SBATCH --time=0-06:00:00
+#SBATCH --time=0-24:00:00
 #SBATCH --mem=128G
 #SBATCH --cpus-per-task=8
 #SBATCH --tasks-per-node=1
