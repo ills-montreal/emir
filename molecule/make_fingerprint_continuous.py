@@ -2,6 +2,8 @@
 
 import argparse
 import json
+import os
+
 import numpy as np
 from utils import get_features
 from sklearn.manifold import MDS
@@ -91,6 +93,7 @@ def main(args):
             )
             continuous_fingerprints = mds.fit_transform(tanimoto)
             print(f"Saving continuous fingerprints...")
+            os.mkdir(f"{args.out_dir}/{args.dataset}", exist_ok=True)
             np.save(
                 f"""{args.out_dir}/{args.dataset}/{desc.replace("/", "_")}_{args.fp_length}_mds_{args.out_dim}.npy""",
                 continuous_fingerprints,
