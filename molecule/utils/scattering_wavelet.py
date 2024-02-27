@@ -95,6 +95,7 @@ def get_scatt_embeddings(pos, valence_charges, full_charges):
     )
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
+    print("Using device: {}".format(device))
     scattering.to(device)
 
     batch_size = 8
