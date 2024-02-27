@@ -193,7 +193,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="ClinTox")
     parser.add_argument("--i-start", type=int, default=0)
-    parser.add_argument("--n_mols", type=int, default=500)
+    parser.add_argument("--n-mols", type=int, default=500)
     parser.add_argument("--out-dir", type=str, default="data")
     args = parser.parse_args()
     path = f"data/{args.dataset}/preprocessed.sdf"
