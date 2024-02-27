@@ -15,7 +15,8 @@ from tqdm import trange
 overlapping_precision = 1e-1
 sigma = 2.0
 
-torch.set_num_threads(int(os.environ['SLURM_CPUS_PER_TASK']))
+torch.set_num_threads(int(os.environ["SLURM_CPUS_PER_TASK"]))
+
 
 def get_positions_charges_from_path(path: str, i0, i1):
     """
@@ -189,13 +190,16 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="ClinTox")
-    parser.add_argument("--i0", type=int, default=0)
-    parser.add_argument("--i1", type=int, default=500)
+    parser.add_argument("--i-start", type=int, default=0)
+    parser.add_argument("--n_mols", type=int, default=500)
     parser.add_argument("--out-dir", type=str, default="data/{}".format(args.dataset))
     args = parser.parse_args()
     path = f"data/{args.dataset}/preprocessed.sdf"
     print("Computing scattering wavelet...")
-    scatt = get_scatt_from_path(path, args.i0, args.i1)
-    np.save(f"{args.out_dir}/scattering_wavelet_{args.i0}_{args.i1}.npy", scatt)
+    scatt = get_scatt_from_path(path, args.i_start, args.i_start + args.n_mols)
+    np.save(
+        f"{args.out_dir}/scattering_wavelet_{args.i_start}_{args.i_start + args.n_mols}.npy",
+        scatt,
+    )
 
     print("Done.")
