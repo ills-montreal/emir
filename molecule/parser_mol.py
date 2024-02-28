@@ -104,7 +104,8 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch-size", type=int, default=8192)
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--n-epochs", type=int, default=20000)
+    parser.add_argument("--n-epochs", type=int, default=10)
+    parser.add_argument("--n-epochs-marg", type=int, default=10)
     parser.add_argument("--ff-layers", type=int, default=3)
     parser.add_argument("--cov-diagonal", type=str, default="var")
     parser.add_argument("--cov-off-diagonal", type=str, default="")
@@ -131,6 +132,7 @@ def generate_knife_config_from_args(args: argparse.Namespace) -> KNIFEArgs:
         batch_size=args.batch_size,
         device=args.device,
         n_epochs=args.n_epochs,
+        n_epochs_marg=args.n_epochs_marg,
         ff_layers=args.ff_layers,
         cov_diagonal=args.cov_diagonal,
         cov_off_diagonal=args.cov_off_diagonal,
