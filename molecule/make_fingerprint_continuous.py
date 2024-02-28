@@ -6,9 +6,11 @@ import os
 
 import numpy as np
 from utils import get_features
+
 from sklearn.manifold import MDS
 
 from tqdm import tqdm
+
 
 def get_parser():
     parser = argparse.ArgumentParser(
@@ -20,7 +22,7 @@ def get_parser():
         type=str,
         nargs="+",
         default=[
-            #"default",
+            # "default",
             "cats",
             "gobbi",
             "pmapper",
@@ -66,39 +68,45 @@ def main(args):
             dataset=args.dataset,
         )
         if (
-                len(descriptors_embedding.unique()) < 1500
-                and not (descriptors_embedding == 0)
-                .logical_or(descriptors_embedding == 1)
-                .all()
+            len(descriptors_embedding.unique()) < 1500
+            and not (descriptors_embedding == 0)
+            .logical_or(descriptors_embedding == 1)
+            .all()
         ):
             # setting to 1 all elements different from 0
             descriptors_embedding = (descriptors_embedding != 0).float()
 
         if (descriptors_embedding == 0).logical_or(descriptors_embedding == 1).all():
             print(f"Computing Tanimoto similarity...")
+            descriptors_embedding = descriptors_embedding.to_sparse()
             intersection = descriptors_embedding @ descriptors_embedding.T
+            descriptors_embedding = descriptors_embedding.to_dense()
             union = (
                 descriptors_embedding.sum(1)[:, None]
                 + descriptors_embedding.sum(1)[None, :]
             )
-            tanimoto = 1-intersection / (union - intersection + 1e-8)
+            tanimoto = 1 - (intersection.to_dense() + 1e-8) / (
+                union - intersection + 1e-8
+            )
 
             print(f"Computing continuous fingerprints...")
             mds = MDS(
                 n_components=args.out_dim,
                 dissimilarity="precomputed",
                 n_init=1,
-                verbose=0,
                 n_jobs=1,
+                verbose=3
             )
             continuous_fingerprints = mds.fit_transform(tanimoto)
+
             print(f"Saving continuous fingerprints...")
-            os.mkdir(f"{args.out_dir}/{args.dataset}", exist_ok=True)
+            os.makedirs(f"{args.out_dir}/{args.dataset}", exist_ok=True)
             np.save(
                 f"""{args.out_dir}/{args.dataset}/{desc.replace("/", "_")}_{args.fp_length}_mds_{args.out_dim}.npy""",
                 continuous_fingerprints,
             )
         print("Done.")
+
 
 if __name__ == "__main__":
     parser = get_parser()

@@ -4,7 +4,6 @@ import datamol as dm
 from scipy.spatial.distance import pdist
 from rdkit import Chem
 import numpy as np
-import torch
 import time
 import torch
 
@@ -16,8 +15,6 @@ from tqdm import trange
 
 overlapping_precision = 1e-1
 sigma = 2.0
-
-torch.set_num_threads(int(os.environ["SLURM_CPUS_PER_TASK"]))
 
 
 def get_positions_charges_from_path(path: str, i0, i1):
