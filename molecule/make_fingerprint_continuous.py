@@ -81,12 +81,13 @@ def main(args):
             descriptors_embedding = descriptors_embedding.to_sparse()
             intersection = descriptors_embedding @ descriptors_embedding.T
             descriptors_embedding = descriptors_embedding.to_dense()
-            union = (
-                descriptors_embedding.sum(1)[:, None]
-                + descriptors_embedding.sum(1)[None, :]
-            )
             tanimoto = 1 - (intersection.to_dense() + 1e-8) / (
-                union - intersection + 1e-8
+                (
+                    descriptors_embedding.sum(1)[:, None]
+                    + descriptors_embedding.sum(1)[None, :]
+                )
+                - intersection
+                + 1e-8
             )
 
             print(f"Computing continuous fingerprints...")
@@ -95,7 +96,7 @@ def main(args):
                 dissimilarity="precomputed",
                 n_init=1,
                 n_jobs=1,
-                verbose=3
+                verbose=3,
             )
             continuous_fingerprints = mds.fit_transform(tanimoto)
 

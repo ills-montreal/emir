@@ -9,39 +9,29 @@
 #SBATCH --nodes=1
 #SBATCH --output=%x-%j.out
 
-export LENGTH=512
+export LENGTH=2048
 export DATASET=HIV
 
 cd $SLURM_TMPDIR
 mkdir tmp_dir
 cd tmp_dir
 
-mkdir emir
-cd emir
-cp /home/fransou/scratch/emir/pyproject.toml .
-cp /home/fransou/scratch/emir/Readme.md .
-cp -r /home/fransou/scratch/emir/emir .
-mkdir molecule
-cd molecule
-cp /home/fransou/scratch/emir/molecule/**.py .
-cp -r /home/fransou/scratch/emir/molecule/utils .
-cp -r /home/fransou/scratch/emir/molecule/models .
-cp -r /home/fransou/scratch/emir/molecule/backbone_pretrained_models .
-mkdir data
-mkdir data/$DATASET
-cp -r /home/fransou/scratch/emir/molecule/data/$DATASET/**$LENGTH** data/$DATASET/.
-cd ..
-
+cp -r /home/fransou/scratch/emir .
 
 module load python/3.10
-source /home/fransou/scratch/env/bin/activate
+module load scipy-stack
+source /home/fransou/EMIR/bin/activate
+
+cd emir
 pip install -e .
+
 cd molecule
+mkdir data/$DATASET
+cp -r /home/fransou/scratch/DATA/EMIR/data/$DATASET/**$LENGTH** data/$DATASET/.
+cp -r /home/fransou/scratch/DATA/EMIR/backbone_pretrained_models ./
 
 export WANDB_MODE=offline
 
 
 echo "Running script"
-python main.py --dataset HIV --fp-length 256 --n-runs 3
-cp -r data /home/fransou/scratch/emir/molecule/data
-cp -r wandb /home/fransou/scratch/emir/molecule/wandb
+python main.py --dataset $DATASET --fp-length $LENGTH
