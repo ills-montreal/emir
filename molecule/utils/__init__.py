@@ -6,7 +6,6 @@ import torch
 from torch.utils.data import DataLoader
 import torch_geometric.nn.pool as tgp
 
-from .molfeat import get_molfeat_descriptors
 from .descriptors import DESCRIPTORS, CONTINUOUS_DESCRIPTORS
 from .model_factory import ModelFactory
 from .scattering_wavelet import get_scatt_from_path
@@ -52,6 +51,8 @@ def get_features(
                     smiles
                 ), "The number of smiles and the number of embeddings are not the same."
             else:
+                from .molfeat import get_molfeat_descriptors # cannot install molfeat on cluster so move import here
+
                 molecular_embedding = get_molfeat_descriptors(
                     smiles,
                     mols=mols,
