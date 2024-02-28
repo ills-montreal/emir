@@ -21,7 +21,8 @@ class KNIFEArgs:
     stopping_criterion: Literal[
         "max_epochs", "early_stopping"
     ] = "max_epochs"  # "max_epochs" or "early_stopping"
-    n_epochs: int = 100
+    n_epochs: int = 10
+    n_epochs_margin: int = 10
     eps: float = 1e-3
     n_epochs_stop: int = 1
     average: str = "var"
@@ -153,7 +154,7 @@ class KNIFEEstimator:
         optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.async_lr)
 
         if self.precomputed_marg_kernel is None:
-            for epoch in range(self.args.n_epochs):
+            for epoch in trange(self.args.n_epochs_marg):
                 epoch_loss = []
                 epoch_marg_ent = []
                 epoch_cond_ent = []
@@ -175,7 +176,7 @@ class KNIFEEstimator:
         self.knife.freeze_marginal()
         if not fit_only_marginal:
             optimizer.param_groups[0]["lr"] = self.args.lr
-            for epoch in range(self.args.n_epochs):
+            for epoch in trange(self.args.n_epochs):
                 epoch_loss = []
                 epoch_marg_ent = []
                 epoch_cond_ent = []
