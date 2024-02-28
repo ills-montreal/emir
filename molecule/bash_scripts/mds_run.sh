@@ -2,7 +2,7 @@
 #SBATCH --job-name=mds-fingerprint-continuous
 #SBATCH --account=def-ibenayed
 #SBATCH --time=0-24:00:00
-#SBATCH --mem=128G
+#SBATCH --mem=2008G
 #SBATCH --cpus-per-task=8
 #SBATCH --tasks-per-node=1
 #SBATCH --nodes=1

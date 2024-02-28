@@ -20,22 +20,22 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         nargs="+",
         default=[
             "ContextPred",
-            "GPT-GNN",
+            # "GPT-GNN",
             "GraphMVP",
-            "GROVER",
-            "EdgePred",
-            "AttributeMask",
-            "GraphLog",
+            # "GROVER",
+            # "EdgePred",
+            # "AttributeMask",
+            # "GraphLog",
             "GraphCL",
             "InfoGraph",
             "Not-trained",
-            "MolBert",
-            "ChemBertMLM-5M",
-            "ChemBertMLM-10M",
-            "ChemBertMLM-77M",
-            "ChemBertMTR-5M",
-            "ChemBertMTR-10M",
-            "ChemBertMTR-77M",
+            # "MolBert",
+            # "ChemBertMLM-5M",
+            # "ChemBertMLM-10M",
+            # "ChemBertMLM-77M",
+            # "ChemBertMTR-5M",
+            # "ChemBertMTR-10M",
+            # "ChemBertMTR-77M",
         ],
         help="List of models to compare",
     )
@@ -53,22 +53,22 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         nargs="+",
         default=[
             "ContextPred",
-            "GPT-GNN",
+            # "GPT-GNN",
             "GraphMVP",
-            "GROVER",
-            "EdgePred",
-            "AttributeMask",
-            "GraphLog",
+            # "GROVER",
+            # "EdgePred",
+            # "AttributeMask",
+            # "GraphLog",
             "GraphCL",
             "InfoGraph",
             "Not-trained",
-            "MolBert",
-            "ChemBertMLM-5M",
-            "ChemBertMLM-10M",
-            "ChemBertMLM-77M",
-            "ChemBertMTR-5M",
-            "ChemBertMTR-10M",
-            "ChemBertMTR-77M",
+            # "MolBert",
+            # "ChemBertMLM-5M",
+            # "ChemBertMLM-10M",
+            # "ChemBertMLM-77M",
+            # "ChemBertMTR-5M",
+            # "ChemBertMTR-10M",
+            # "ChemBertMTR-77M",
         ],
         help="List of descriptors to compare",
     )
@@ -87,9 +87,9 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         help="Output file",
     )
 
-    parser.add_argument("--fp-length", type=int, default=2048)
-    parser.add_argument("--mds-dim", type=int, default=64)
-    parser.add_argument("--n-jobs", type=int, default=2)
+    parser.add_argument("--fp-length", type=int, default=1024)
+    parser.add_argument("--mds-dim", type=int, default=0)
+    parser.add_argument("--n-jobs", type=int, default=1)
     return parser
 
 
