@@ -18,12 +18,11 @@ mp.set_start_method("forkserver")
 from emir.estimators import KNIFEEstimator, KNIFEArgs
 
 from molecule.models.transformers_models import PIPELINE_CORRESPONDANCY
-from utils import get_features
 from parser_mol import (
     generate_knife_config_from_args,
 )
 from models.model_paths import get_model_path
-from utils import get_features
+from utils import MolecularFeatureExtractor
 
 import logging
 
@@ -32,18 +31,25 @@ logger.setLevel(logging.INFO)
 
 import wandb
 
+
 def get_embedders(args: argparse.Namespace):
     all_embedders = args.descriptors + args.models
     MODELS = get_model_path(models=all_embedders)
     embeddings_fn = {}
 
+    feature_extractor = MolecularFeatureExtractor(
+        device=args.device,
+        length=args.fp_length,
+        dataset=args.dataset,
+        mds_dim=args.mds_dim,
+    )
+
     for model_name, model_path in MODELS.items():
         embeddings_fn[model_name] = partial(
-            get_features,
+            feature_extractor.get_features,
             path=model_path,
             feature_type="model",
             name=model_name,
-            device=args.device,
         )
     for model_name in all_embedders:
         if (
@@ -51,17 +57,16 @@ def get_embedders(args: argparse.Namespace):
             and model_name in PIPELINE_CORRESPONDANCY.keys()
         ):
             embeddings_fn[model_name] = partial(
-                get_features, name=model_name, feature_type="model", device=args.device
+                feature_extractor.get_features,
+                name=model_name,
+                feature_type="model",
             )
     for method in all_embedders:
         if not method in embeddings_fn:
             embeddings_fn[method] = partial(
-                get_features,
+                feature_extractor.get_features,
                 name=method,
-                length=args.fp_length,
                 feature_type="descriptor",
-                device=args.device,
-                mds_dim=args.mds_dim,
             )
 
     return embeddings_fn
@@ -96,7 +101,7 @@ def get_knife_marg_kernel(
     mols: List[dm.Mol] = None,
     args: argparse.Namespace = None,
 ) -> Dict[str, torch.nn.Module]:
-    x = embeddings_fn[emb_key](smiles, mols=mols, dataset=args.dataset).to(
+    x = embeddings_fn[emb_key](smiles, mols=mols).to(
         knife_config.device
     )
     if (x == 0).logical_or(x == 1).all():
@@ -127,6 +132,7 @@ def get_knife_marg_kernel(
 
     return {emb_key: knife_estimator.knife.kernel_marg.to("cpu")}
 
+
 def model_profile(
     x_y: Tuple[str, str],
     args: argparse.Namespace,
@@ -152,14 +158,14 @@ def model_profile(
     }
     model_name, desc = x_y
     model_embedding = embeddings_fn[model_name](
-        smiles, mols=mols, dataset=args.dataset
+        smiles, mols=mols
     ).to(knife_config.device)
     df_losses_XY = []
     df_losses_YX = []
 
     mis = []
     descriptors_embedding = embeddings_fn[desc](
-        smiles, mols=mols, dataset=args.dataset
+        smiles, mols=mols
     ).to(knife_config.device)
 
     for i in range(args.n_runs):
@@ -247,6 +253,7 @@ def model_profile(
 
     return (model_name, (results, df_losses_XY, df_losses_YX))
 
+
 def compute_all_mi(
     args: argparse.Namespace,
     smiles: List[str],
@@ -268,7 +275,6 @@ def compute_all_mi(
         args=args,
     )
 
-
     all_embedders = args.descriptors + args.models
     all_embedders = list(set(all_embedders))
     if args.n_jobs == 1:
@@ -280,7 +286,9 @@ def compute_all_mi(
             all_marginal_kernels = list(
                 tqdm(p.imap(marginal_fn, all_embedders), total=len(all_embedders))
             )
-    log_concatenated_tables_from_dir(os.path.join(args.out_dir, "losses"), "marginals", ["_marg.csv"])
+    log_concatenated_tables_from_dir(
+        os.path.join(args.out_dir, "losses"), "marginals", ["_marg.csv"]
+    )
     logger.info("All marginal kernels computed")
     for marginal_kernel in all_marginal_kernels:
         marginal_kernels.update(marginal_kernel)
@@ -383,9 +391,5 @@ def log_concatenated_tables_from_dir(path: str, name, template=["_marg.csv"]):
     if df.shape[0] > 20000:
         ratio = df.shape[0] // 20000 + 1
         df = df[df.epoch % ratio == 0]
-    wandb.log(
-        {
-            name: wandb.Table(dataframe=df)
-        }
-    )
+    wandb.log({name: wandb.Table(dataframe=df)})
     print(f"Logged {name} table")
