@@ -40,6 +40,14 @@ def main():
     parser = add_knife_args(parser)
     args = parser.parse_args()
 
+    args.out_dir = os.path.join(
+        args.out_dir, args.dataset, str(args.fp_length), str(args.mds_dim)
+    )
+    os.makedirs(args.out_dir, exist_ok=True)
+
+    os.makedirs(os.path.join(args.out_dir, "losses"), exist_ok=True)
+    logger.info(f"Saving results in {args.out_dir}")
+
     # Update the wandb config with the args specified in the command line
     wandb.config.update(args)
 
@@ -59,7 +67,6 @@ def main():
         desc="Progression",
         position=0,
     )
-
 
     all_results = compute_all_mi(
         args=args,

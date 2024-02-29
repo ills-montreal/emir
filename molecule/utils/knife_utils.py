@@ -32,7 +32,6 @@ logger.setLevel(logging.INFO)
 
 import wandb
 
-
 def get_embedders(args: argparse.Namespace):
     all_embedders = args.descriptors + args.models
     MODELS = get_model_path(models=all_embedders)
@@ -127,7 +126,6 @@ def get_knife_marg_kernel(
     )
 
     return {emb_key: knife_estimator.knife.kernel_marg.to("cpu")}
-
 
 def model_profile(
     x_y: Tuple[str, str],
@@ -249,7 +247,6 @@ def model_profile(
 
     return (model_name, (results, df_losses_XY, df_losses_YX))
 
-
 def compute_all_mi(
     args: argparse.Namespace,
     smiles: List[str],
@@ -273,10 +270,16 @@ def compute_all_mi(
 
 
     all_embedders = args.descriptors + args.models
-    with Pool(args.n_jobs) as p:
+    all_embedders = list(set(all_embedders))
+    if args.n_jobs == 1:
         all_marginal_kernels = list(
-            tqdm(p.imap(marginal_fn, all_embedders), total=len(all_embedders))
+            tqdm(map(marginal_fn, all_embedders), total=len(all_embedders))
         )
+    else:
+        with Pool(args.n_jobs) as p:
+            all_marginal_kernels = list(
+                tqdm(p.imap(marginal_fn, all_embedders), total=len(all_embedders))
+            )
     log_concatenated_tables_from_dir(os.path.join(args.out_dir, "losses"), "marginals", ["_marg.csv"])
     logger.info("All marginal kernels computed")
     for marginal_kernel in all_marginal_kernels:
@@ -292,13 +295,21 @@ def compute_all_mi(
         knife_config=knife_config,
     )
     all_combinaisons = list(product(args.models, args.descriptors))
-    with Pool(args.n_jobs) as p:
+    if args.n_jobs == 1:
         results = list(
             tqdm(
-                p.imap(model_profile_partial, all_combinaisons),
+                map(model_profile_partial, all_combinaisons),
                 total=len(all_combinaisons),
             )
         )
+    else:
+        with Pool(args.n_jobs) as p:
+            results = list(
+                tqdm(
+                    p.imap(model_profile_partial, all_combinaisons),
+                    total=len(all_combinaisons),
+                )
+            )
 
     # save all df by concatenating those with the same model_name
     concatenated_df = {}
@@ -335,13 +346,6 @@ def compute_all_mi(
             ),
             index=False,
         )
-        wandb.log(
-            {
-                f"{model_name.replace('/', '_')}_{args.fp_length}": wandb.Table(
-                    dataframe=df
-                )
-            }
-        )
 
     for model_name, df in concatenated_df_XY.items():
         if not df.empty:
@@ -354,13 +358,6 @@ def compute_all_mi(
             )
             ratio = df.shape[0] // 20000 + 1
             df = df[df.epoch % ratio == 0]
-            wandb.log(
-                {
-                    f"{model_name.replace('/', '_')}_{args.fp_length}_XY": wandb.Table(
-                        dataframe=df
-                    )
-                }
-            )
     for model_name, df in concatenated_df_YX.items():
         if not df.empty:
             df.to_csv(
@@ -372,13 +369,6 @@ def compute_all_mi(
             )
             ratio = df.shape[0] // 20000 + 1
             df = df[df.epoch % ratio == 0]
-            wandb.log(
-                {
-                    f"{model_name.replace('/', '_')}_{args.fp_length}_YX": wandb.Table(
-                        dataframe=df
-                    )
-                }
-            )
 
     return pd.concat([r[0] for _, r in results])
 
