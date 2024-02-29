@@ -87,13 +87,19 @@ def get_features(
                 )
 
     if feature_type == "model":
-        molecular_embedding = ModelFactory(name)(
-            smiles,
-            mols=mols,
-            path=path,
-            transformer_name=name,
-            device=device,
-        )
+        if os.path.exists(f"data/{dataset}/{name}.npy"):
+            molecular_embedding = torch.tensor(
+                np.load(f"data/{dataset}/{name}.npy"), device=device
+            )
+        else:
+            molecular_embedding = ModelFactory(name)(
+                smiles,
+                mols=mols,
+                path=path,
+                transformer_name=name,
+                device=device,
+            )
+            np.save(f"data/{dataset}/{name}.npy", molecular_embedding.cpu().numpy())
 
         if normalize:
             molecular_embedding = (

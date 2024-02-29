@@ -10,7 +10,6 @@ import torch.nn as nn
 from ..distances import TanimotoDistance
 from .feed_forward import FF
 from .kernels import BaseMargKernel, BaseCondKernel
-from line_profiler_pycharm import profile
 
 
 class TanimotoMargKernel(BaseMargKernel):
@@ -51,7 +50,6 @@ class TanimotoMargKernel(BaseMargKernel):
             self.init_std * torch.randn((1, self.K)), requires_grad=True
         )
 
-    @profile
     def logpdf(self, x):
         assert len(x.shape) == 2 and x.shape[1] == self.d, "x has to have shape [N, d]"
         x = x[:, None, :]
@@ -96,7 +94,6 @@ class TanimotoCondKernel(BaseCondKernel):
         self.distances = TanimotoDistance()
         self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)])
 
-    @profile
     def logpdf(self, z_c, z_d):  # H(z_d|z_c)
         z_d = z_d[:, None, :]  # [N, 1, d]
         w = torch.log_softmax(self.weight(z_c), dim=-1)  # [N, K]

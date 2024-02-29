@@ -22,7 +22,7 @@ class KNIFEArgs:
         "max_epochs", "early_stopping"
     ] = "max_epochs"  # "max_epochs" or "early_stopping"
     n_epochs: int = 10
-    n_epochs_margin: int = 10
+    n_epochs_marg: int = 10
     eps: float = 1e-3
     n_epochs_stop: int = 1
     average: str = "var"
@@ -94,13 +94,11 @@ class KNIFEEstimator:
             kernel_type = "gaussian"
         self.kernel_type = kernel_type
 
-
         self.knife = KNIFE(
             self.args,
             self.x_dim,
             self.y_dim,
             kernel_type=kernel_type,
-            reg_conf=self.args.mean_sep,
             precomputed_marg_kernel=self.precomputed_marg_kernel,
         ).to(self.args.device)
 
@@ -155,41 +153,26 @@ class KNIFEEstimator:
 
         if self.precomputed_marg_kernel is None:
             for epoch in trange(self.args.n_epochs_marg):
-                epoch_loss = []
-                epoch_marg_ent = []
-                epoch_cond_ent = []
-                for x_batch, y_batch in train_loader:
-                    optimizer.zero_grad()
-                    loss = self.knife.kernel_marg(y)
-                    marg_ent = loss
-                    cond_ent = loss - loss
-                    loss.backward()
-                    optimizer.step()
-                    epoch_loss.append(loss)
-                    epoch_marg_ent.append(marg_ent)
-                    epoch_cond_ent.append(cond_ent)
-
+                epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_marginal(
+                    train_loader, optimizer
+                )
                 self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
                 self.recorded_marg_ent.append(sum(epoch_marg_ent) / len(epoch_marg_ent))
                 self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
 
         self.knife.freeze_marginal()
         if not fit_only_marginal:
+            with torch.no_grad():
+                marg_ent = []
+                for x_batch, y_batch in train_loader:
+                    marg_ent.append(self.knife.kernel_marg(y_batch))
+                marg_ent = torch.tensor(marg_ent).mean()
+
             optimizer.param_groups[0]["lr"] = self.args.lr
             for epoch in trange(self.args.n_epochs):
-                epoch_loss = []
-                epoch_marg_ent = []
-                epoch_cond_ent = []
-                for x_batch, y_batch in train_loader:
-                    optimizer.zero_grad()
-                    loss, marg_ent, cond_ent = self.knife.learning_loss(
-                        x_batch, y_batch
-                    )
-                    cond_ent.backward()
-                    optimizer.step()
-                    epoch_loss.append(loss)
-                    epoch_marg_ent.append(marg_ent)
-                    epoch_cond_ent.append(cond_ent)
+                epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_conditional(
+                    train_loader, optimizer
+                )
 
                 self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
                 self.recorded_marg_ent.append(sum(epoch_marg_ent) / len(epoch_marg_ent))
@@ -200,6 +183,46 @@ class KNIFEEstimator:
                 if self.early_stopping(self.recorded_loss, marg_ent):
                     logger.info("Reached early stopping criterion")
                     break
+
+    def fit_marginal(
+        self,
+        train_loader,
+        optimizer,
+    ):
+        epoch_loss = []
+        epoch_marg_ent = []
+        epoch_cond_ent = []
+        for x_batch, y_batch in train_loader:
+            optimizer.zero_grad()
+            loss = self.knife.kernel_marg(y_batch)
+            marg_ent = loss
+            cond_ent = 0
+            loss.backward()
+            optimizer.step()
+            epoch_loss.append(loss)
+            epoch_marg_ent.append(marg_ent)
+            epoch_cond_ent.append(cond_ent)
+        return epoch_loss, epoch_marg_ent, epoch_cond_ent
+
+    def fit_conditional(
+        self,
+        train_loader,
+        optimizer,
+    ):
+        epoch_loss = []
+        epoch_marg_ent = []
+        epoch_cond_ent = []
+        for x_batch, y_batch in train_loader:
+            optimizer.zero_grad()
+            loss = self.knife.kernel_cond(x_batch, y_batch)
+            cond_ent = loss
+            marg_ent = 0
+            loss.backward()
+            optimizer.step()
+            epoch_loss.append(loss)
+            epoch_marg_ent.append(marg_ent)
+            epoch_cond_ent.append(cond_ent)
+        return epoch_loss, epoch_marg_ent, epoch_cond_ent
 
 
 class FastTensorDataLoader:
