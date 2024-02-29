@@ -34,4 +34,4 @@ export WANDB_MODE=offline
 
 
 echo "Running script"
-python main.py --dataset $DATASET --fp-length $LENGTH
+python main.py --dataset $DATASET --fp-length $LENGTH --out-dir /home/fransou/scratch/DATA/results --batch-size 8192 --n-epochs 100 --n-epochs-marg 100
