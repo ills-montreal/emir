@@ -152,7 +152,9 @@ class KNIFEEstimator:
         )
         optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.async_lr)
 
-        if self.precomputed_marg_kernel is None:
+        if (
+            self.precomputed_marg_kernel is None
+        ):  # If a marginal kernel is not precomputed, we train it
             for epoch in trange(self.args.n_epochs_marg):
                 epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_marginal(
                     train_loader, optimizer
@@ -162,13 +164,16 @@ class KNIFEEstimator:
                 self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
 
         self.knife.freeze_marginal()
-        if not fit_only_marginal:
+
+        if not fit_only_marginal:  # If we want to fit the full KNIFE estimator
+            # First, we compute the marginal entropy on the dataset (used in the early stopping criterion)
             with torch.no_grad():
                 marg_ent = []
                 for x_batch, y_batch in train_loader:
                     marg_ent.append(self.knife.kernel_marg(y_batch))
                 marg_ent = torch.tensor(marg_ent).mean()
 
+            # Then, we fit the conditional kernel
             optimizer.param_groups[0]["lr"] = self.args.lr
             for epoch in trange(self.args.n_epochs):
                 epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_conditional(
