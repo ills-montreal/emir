@@ -61,7 +61,6 @@ def main(args):
         device="cpu",
         length=args.fp_length,
         dataset=args.dataset,
-        mds_dim=args.out_dim,
     )
     for desc in tqdm(args.descriptors):
         print(f"Processing {desc}...")
