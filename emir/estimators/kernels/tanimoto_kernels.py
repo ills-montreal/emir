@@ -87,9 +87,9 @@ class TanimotoCondKernel(BaseCondKernel):
     def __init__(self, args, zc_dim, zd_dim, layers=1, **kwargs):
         super().__init__(args, zc_dim, zd_dim)
         self.K = args.cond_modes
-        self.mu = FF(args, zc_dim, self.d, self.K * zd_dim)
-        self.weight = FF(args, zc_dim, self.d, self.K)
-        self.logvar = FF(args, zc_dim, self.d, self.K)
+        self.mu = FF(args, zc_dim, self.ff_hidden_dim, self.K * zd_dim)
+        self.weight = FF(args, zc_dim, self.ff_hidden_dim, self.K)
+        self.logvar = FF(args, zc_dim, self.ff_hidden_dim, self.K)
         self.kernel_temp = 100
         self.distances = TanimotoDistance()
         self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)])

@@ -19,23 +19,12 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         default=[
-            "ContextPred",
-            "GPT-GNN",
-            "GraphMVP",
-            "GROVER",
-             "EdgePred",
-            "AttributeMask",
-            "GraphLog",
-            "GraphCL",
-            "InfoGraph",
-            "Not-trained",
-            # "MolBert",
-            # "ChemBertMLM-5M",
-            # "ChemBertMLM-10M",
-            # "ChemBertMLM-77M",
-            # "ChemBertMTR-5M",
-            # "ChemBertMTR-10M",
-            # "ChemBertMTR-77M",
+            "ecfp",
+            "secfp",
+            "cats",
+            "pmapper",
+            "cats/3D",
+            "pmapper/3D",
         ],
         help="List of models to compare",
     )
@@ -52,23 +41,12 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         default=[
-            "ContextPred",
-            # "GPT-GNN",
-            "GraphMVP",
-            "GROVER",
-            # "EdgePred",
-            "AttributeMask",
-            #"GraphLog",
-            "GraphCL",
-            #"InfoGraph",
-            "Not-trained",
-            # "MolBert",
-            # "ChemBertMLM-5M",
-            # "ChemBertMLM-10M",
-            # "ChemBertMLM-77M",
-            # "ChemBertMTR-5M",
-            # "ChemBertMTR-10M",
-            # "ChemBertMTR-77M",
+            "ecfp",
+            "secfp",
+            "cats",
+            "pmapper",
+            "cats/3D",
+            "pmapper/3D",
         ],
         help="List of descriptors to compare",
     )
@@ -111,6 +89,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--cov-off-diagonal", type=str, default="")
     parser.add_argument("--optimize-mu", type=str, default="true")
     parser.add_argument("--ff-residual-connection", type=str, default="false")
+    parser.add_argument("--ff-hidden-dim", type=int, default=0)
     parser.add_argument("--use-tanh", type=str, default="true")
     parser.add_argument("--stopping-criterion", type=str, default="early_stopping")
     parser.add_argument("--eps", type=float, default=1e-5)
@@ -134,6 +113,7 @@ def generate_knife_config_from_args(args: argparse.Namespace) -> KNIFEArgs:
         n_epochs=args.n_epochs,
         n_epochs_marg=args.n_epochs_marg,
         ff_layers=args.ff_layers,
+        ff_dim_hidden=args.ff_hidden_dim,
         cov_diagonal=args.cov_diagonal,
         cov_off_diagonal=args.cov_off_diagonal,
         optimize_mu=args.optimize_mu == "true",

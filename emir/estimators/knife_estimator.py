@@ -45,6 +45,7 @@ class KNIFEArgs:
     ff_activation: str = "relu"
     ff_layer_norm: bool = True
     ff_layers: int = 2
+    ff_dim_hidden: Optional[int] = 0
     async_lr: float = 0.1
 
 
@@ -89,7 +90,7 @@ class KNIFEEstimator:
 
         # Create model for MI estimation
         if (y == 0).logical_or(y == 1).all():
-            kernel_type = "tanimoto"
+            kernel_type = "discrete"
         else:
             kernel_type = "gaussian"
         self.kernel_type = kernel_type
