@@ -5,7 +5,7 @@ import json
 import os
 
 import numpy as np
-from utils import get_features
+from utils import MolecularFeatureExtractor
 
 from sklearn.manifold import MDS
 
@@ -56,16 +56,20 @@ def get_parser():
 def main(args):
     with open(f"data/{args.dataset}/smiles.json", "r") as f:
         smiles = json.load(f)
+
+    feature_extractor = MolecularFeatureExtractor(
+        device="cpu",
+        length=args.fp_length,
+        dataset=args.dataset,
+        mds_dim=args.out_dim,
+    )
     for desc in tqdm(args.descriptors):
         print(f"Processing {desc}...")
         print(f"Loading {args.dataset}...")
         descriptors_embedding = get_features(
             smiles=smiles,
             name=desc,
-            length=args.fp_length,
             feature_type="descriptor",
-            device="cpu",
-            dataset=args.dataset,
         )
         if (
             len(descriptors_embedding.unique()) < 1500

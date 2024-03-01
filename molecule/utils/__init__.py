@@ -42,7 +42,7 @@ class MolecularFeatureExtractor:
         length = self.length
         dataset = self.dataset
         mds_dim = self.mds_dim
-        normalize = self.normalize
+        normalize = self.normalize # ONLY APPLIES TO MODELS
 
         if feature_type == "descriptor":
             if name == "ScatteringWavelet":
