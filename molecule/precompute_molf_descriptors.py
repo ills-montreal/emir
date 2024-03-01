@@ -6,7 +6,7 @@ from tqdm import tqdm
 import argparse
 import json
 
-from utils import get_features
+from utils import MolecularFeatureExtractor
 from precompute_3d import precompute_3d
 from utils.descriptors import DESCRIPTORS, can_be_2d_input
 from utils.molfeat import get_molfeat_transformer
@@ -35,8 +35,6 @@ parser.add_argument(
     required=False,
     help="List of descriptors to compute",
 )
-
-
 
 
 def main():
@@ -73,28 +71,37 @@ def main():
             os.makedirs(f"data/{args.dataset}")
 
         pre_processed = pd.DataFrame({"smiles": smiles, "mols": mols})
-        dm.to_sdf(pre_processed, f"data/{args.dataset}/preprocessed.sdf", mol_column="mols")
-        #save the SMILES in a json file
+        dm.to_sdf(
+            pre_processed, f"data/{args.dataset}/preprocessed.sdf", mol_column="mols"
+        )
+        # save the SMILES in a json file
         with open(f"data/{args.dataset}/smiles.json", "w") as f:
             json.dump(smiles, f)
 
-
     else:
-        pre_processed = dm.read_sdf(f"data/{args.dataset}/preprocessed.sdf", as_df=True, mol_column="mols")
-        smiles = pre_processed["smiles"].iloc[:,0].tolist()
+        pre_processed = dm.read_sdf(
+            f"data/{args.dataset}/preprocessed.sdf", as_df=True, mol_column="mols"
+        )
+        smiles = pre_processed["smiles"].iloc[:, 0].tolist()
         mols = pre_processed["mols"].tolist()
 
     for desc in tqdm(args.descriptors, position=0, desc="Descriptors"):
-        for length in tqdm(
-            [1024, 2048], desc="Length", position=1, leave=False
-        ):
+        for length in tqdm([1024, 2048], desc="Length", position=1, leave=False):
+            feature_extractor = MolecularFeatureExtractor(
+                device="cpu",
+                length=length,
+                dataset=args.dataset,
+                mds_dim=0,
+            )
             if not os.path.exists(f"data/{args.dataset}/{desc}_{length}.npy"):
-                descriptor = get_features(
-                    smiles, name =desc, mols=mols, length=length, dataset=args.dataset
+                descriptor = feature_extractor.get_features(
+                    smiles, name=desc, mols=mols, feature_type="descriptor"
                 ).numpy()
 
-
-                np.save(f"data/{args.dataset}/{desc.replace('/','_')}_{length}.npy", descriptor)
+                np.save(
+                    f"data/{args.dataset}/{desc.replace('/','_')}_{length}.npy",
+                    descriptor,
+                )
                 del descriptor
             else:
                 print(f"data/{args.dataset}/{desc}_{length}.npy already exists")
