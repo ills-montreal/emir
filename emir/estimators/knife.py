@@ -44,7 +44,7 @@ class KNIFE(nn.Module):
 
     def learning_loss(self, z_c, z_d):
         marg_ent, cond_ent = self.run_kernels(z_c, z_d)
-        return marg_ent + cond_ent, marg_ent, cond_ent
+        return marg_ent + cond_ent
 
     def I(self, *args, **kwargs):
         return self.forward(*args[:2], **kwargs)[0]

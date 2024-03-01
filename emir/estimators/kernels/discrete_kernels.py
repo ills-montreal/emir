@@ -18,7 +18,6 @@ class DiscreteMargKernel(BaseMargKernel):
     def __init__(self, args, zc_dim, zd_dim, init_samples=None, **kwargs):
         super().__init__(args, zc_dim, zd_dim)
         self.kernel_temp = 10  # HARDCODED
-        self.bce = nn.BCELoss(reduction="none")
         self.K = args.marg_modes if self.optimize_mu else args.batch_size
         self.init_std = (
             args.init_std * 10
