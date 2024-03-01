@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 import torch_geometric.nn.pool as tgp
+import time
 
 from .descriptors import DESCRIPTORS, CONTINUOUS_DESCRIPTORS
 from .model_factory import ModelFactory
@@ -65,10 +66,17 @@ class MolecularFeatureExtractor:
             transformer_name = name.replace("/", "_")
             if mds_dim == 0 or transformer_name in CONTINUOUS_DESCRIPTORS:
                 if os.path.exists(f"data/{dataset}/{transformer_name}_{length}.npy"):
+                    print("Loading from file...")
+                    t0 = time.time()
+                    molecular_embedding = np.load(f"data/{dataset}/{transformer_name}_{length}.npy")
+                    t1 = time.time()
+                    print(f"Time to load: {t1 - t0}")
+
                     molecular_embedding = torch.tensor(
-                        np.load(f"data/{dataset}/{transformer_name}_{length}.npy"),
+                        molecular_embedding,
                         device=device,
                     )
+                    print(f"Time to convert: {time.time() - t1}")
                     assert len(molecular_embedding) == len(
                         smiles
                     ), "The number of smiles and the number of embeddings are not the same."

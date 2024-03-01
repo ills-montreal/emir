@@ -1,6 +1,7 @@
 from torch import nn
 import torch
 
+
 class BaseMargKernel(nn.Module):
     def __init__(self, args, zc_dim, zd_dim):
         super().__init__()
@@ -13,7 +14,7 @@ class BaseMargKernel(nn.Module):
     def logpdf(self, x):
         raise NotImplementedError
 
-    def forward(self,x):
+    def forward(self, x):
         y = self.logpdf(x)
         return -torch.mean(y)
 
@@ -22,6 +23,7 @@ class BaseCondKernel(nn.Module):
     def __init__(self, args, zc_dim, zd_dim):
         super().__init__()
         self.d = zd_dim
+        self.ff_hidden_dim = args.ff_dim_hidden if args.ff_dim_hidden > 0 else self.d
         self.use_tanh = args.use_tanh
         self.optimize_mu = args.optimize_mu
         self.zc_dim = zc_dim
@@ -33,4 +35,3 @@ class BaseCondKernel(nn.Module):
     def forward(self, z_c, z_d):
         z = self.logpdf(z_c, z_d)
         return -torch.mean(z)
-

@@ -86,13 +86,13 @@ class GaussianCondKernel(BaseCondKernel):
         self.K = args.cond_modes
         self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device)
 
-        self.mu = FF(args, zc_dim, self.d, self.K * zd_dim)
-        self.logvar = FF(args, zc_dim, self.d, self.K * zd_dim)
+        self.mu = FF(args, zc_dim, self.ff_hidden_dim, self.K * self.d)
+        self.logvar = FF(args, zc_dim, self.ff_hidden_dim, self.K * self.d)
 
-        self.weight = FF(args, zc_dim, self.d, self.K)
+        self.weight = FF(args, zc_dim, self.ff_hidden_dim, self.K)
         self.tri = None
         if args.cov_off_diagonal == "var":
-            self.tri = FF(args, zc_dim, self.d, self.K * zd_dim**2)
+            self.tri = FF(args, zc_dim, self.ff_hidden_dim, self.K * self.d**2)
 
     def logpdf(self, z_c, z_d):  # H(z_d|z_c)
         z_d = z_d[:, None, :]  # [N, 1, d]
