@@ -66,7 +66,7 @@ def main(args):
     for desc in tqdm(args.descriptors):
         print(f"Processing {desc}...")
         print(f"Loading {args.dataset}...")
-        descriptors_embedding = get_features(
+        descriptors_embedding = feature_extractor.get_features(
             smiles=smiles,
             name=desc,
             feature_type="descriptor",
