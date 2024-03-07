@@ -8,15 +8,15 @@ import datamol as dm
 import torch
 from tqdm import tqdm
 
-from models.moleculenet_models import GNN
-from moleculenet_encoding import mol_to_graph_data_obj_simple
+from molecule.models.moleculenet_models import GNN
+from molecule.moleculenet_encoding import mol_to_graph_data_obj_simple
 
 
 MODEL_PARAMS = {
     "num_layer": 5,
     "emb_dim": 300,
     "JK": "last",
-    "drop_ratio": 0.5,
+    "drop_ratio": 0.0,
     "gnn_type": "gin",
 }
 
@@ -37,13 +37,14 @@ def get_embeddings_from_model_moleculenet(
     molecule_model = GNN(**MODEL_PARAMS).to(device)
     if not path == "":
         molecule_model.load_state_dict(torch.load(path))
+
     molecule_model.eval()
 
     if graph_input_path is None or not os.path.exists(graph_input_path):
         graph_input = []
         for s in tqdm(smiles, desc="Converting smiles to graph data object"):
             try:
-                graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)).to(device))
+                graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s), smiles=s).to(device))
             except Exception as e:
                 print(f"Failed to convert {s} to graph data object.")
                 raise e

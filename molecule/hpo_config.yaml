@@ -1,26 +1,41 @@
-program: main.py
-method: bayes
+program: main_downstream.py
+method: grid
 metric:
-  name: inter_model_std_normalized
+  name: mean_roc
   goal: maximize
 parameters:
-  cond-modes:
-    values: [1,2,3,4,5,6,7,8,9,10,11,12]
-  marg-modes:
-    values: [1,2,3,4,5,6,7,8,9,10,11,12]
-  ff-layers:
-    values: [1,2,3,4]
-  cov-diagonal:
-    values: ["var"]
-  ff-residual-connection:
-    values: ["true","false"]
-  use-tanh:
-    values: ["true","false"]
+  hidden-dim:
+    values: [2,4,8,16,32,64]
+  n-layers:
+    values: [0,1,2]
+  d-rate:
+    values: [0,0.2]
+  norm:
+    values: ["batch"]
+  lr:
+    values: [1e-3]
+  batch-size:
+    values: [128]
+  datasets:
+    values: [
+        "hERG",
+        "DILI",
+        "Carcinogens_Lagunin",
+        "ClinTox",
+        "PAMPA_NCATS",
+        "HIA_Hou",
+        "Pgp_Broccatelli",
+        "Bioavailability_Ma",
+        "BBB_Martins",
+        "CYP2C9_Substrate_CarbonMangels",
+        "CYP2D6_Substrate_CarbonMangels",
+        "CYP3A4_Substrate_CarbonMangels",
+      ]
+
+
 command:
   - ${env}
   - ${interpreter}
   - ${program}
-  - --dataset
-  - hERG_Karim
   - ${args}
 
