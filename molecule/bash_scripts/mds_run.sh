@@ -8,7 +8,7 @@
 #SBATCH --nodes=1
 #SBATCH --output=%x-%j.out
 
-export DATASET="ZINC"
+export DATASET="ClinTox"
 export FP_LENGTH=1024
 export OUT_DIM=64
 

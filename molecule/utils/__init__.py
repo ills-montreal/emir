@@ -42,7 +42,7 @@ class MolecularFeatureExtractor:
         length = self.length
         dataset = self.dataset
         mds_dim = self.mds_dim
-        normalize = self.normalize # ONLY APPLIES TO MODELS
+        normalize = self.normalize  # ONLY APPLIES TO MODELS
 
         if feature_type == "descriptor":
             if name == "ScatteringWavelet":
@@ -55,9 +55,9 @@ class MolecularFeatureExtractor:
                     ), "The number of smiles and the number of embeddings are not the same."
                     return molecular_embedding
                 else:
-                    if os.path.exists(f"data/{dataset}_3d.sdf"):
+                    if os.path.exists(f"data/{dataset}/preprocessed.sdf"):
                         molecular_embedding = get_scatt_from_path(
-                            f"data/{dataset}_3d.sdf"
+                            f"data/{args.dataset}/preprocessed.sdf"
                         )
                         return molecular_embedding
                     else:
@@ -66,17 +66,13 @@ class MolecularFeatureExtractor:
             transformer_name = name.replace("/", "_")
             if mds_dim == 0 or transformer_name in CONTINUOUS_DESCRIPTORS:
                 if os.path.exists(f"data/{dataset}/{transformer_name}_{length}.npy"):
-                    print("Loading from file...")
-                    t0 = time.time()
-                    molecular_embedding = np.load(f"data/{dataset}/{transformer_name}_{length}.npy")
-                    t1 = time.time()
-                    print(f"Time to load: {t1 - t0}")
-
+                    molecular_embedding = np.load(
+                        f"data/{dataset}/{transformer_name}_{length}.npy"
+                    )
                     molecular_embedding = torch.tensor(
                         molecular_embedding,
                         device=device,
                     )
-                    print(f"Time to convert: {time.time() - t1}")
                     assert len(molecular_embedding) == len(
                         smiles
                     ), "The number of smiles and the number of embeddings are not the same."
