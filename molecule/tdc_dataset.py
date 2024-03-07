@@ -1,7 +1,9 @@
+import pandas as pd
 from tdc.single_pred import Tox, ADME, HTS, QM
 from tdc.generation import MolGen
 
 from tdc.utils import retrieve_label_name_list
+from tqdm import tqdm
 
 # Correspondancy between dataset name and the corresponding prediction/generation TDC problem
 correspondancy_dict = {
@@ -62,6 +64,24 @@ def get_dataset(dataset: str):
     try:
         df = correspondancy_dict[dataset](name=dataset).get_data()
     except Exception as e:
-        label_list = retrieve_label_name_list(dataset)
-        df = correspondancy_dict[dataset](name=dataset, label_name=label_list[0]).get_data()
+        if e.args[0].startswith("Please select a label name. You can use tdc.utils.retrieve_label_name_list"):
+            label_list = retrieve_label_name_list(dataset)
+            df=[]
+            for l in tqdm(label_list):
+                df.append(correspondancy_dict[dataset](name=dataset, label_name=l).get_data())
+            df  = pd.concat(df).drop_duplicates("Drug")
     return df
+
+def get_dataset_split(dataset: str, random_seed: int = 42):
+    try:
+        split = correspondancy_dict[dataset](name=dataset).get_split(seed=random_seed)
+        return [split]
+    except Exception as e:
+        if e.args[0].startswith("Please select a label name. You can use tdc.utils.retrieve_label_name_list"):
+            label_list = retrieve_label_name_list(dataset)
+            split = []
+            for l in tqdm(label_list):
+                split.append(correspondancy_dict[dataset](name=dataset, label_name=l).get_split(seed=random_seed))
+            return split
+        else:
+            raise e
