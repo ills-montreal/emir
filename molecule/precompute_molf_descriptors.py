@@ -87,7 +87,7 @@ def main():
 
     for desc in tqdm(args.descriptors, position=0, desc="Descriptors"):
         for length in tqdm(
-            [1024, 2048], desc="Length", position=1, leave=False
+            [1024], desc="Length", position=1, leave=False
         ):
             feature_extractor = MolecularFeatureExtractor(
                 device="cpu",
