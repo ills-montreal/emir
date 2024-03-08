@@ -7,11 +7,11 @@ parameters:
   hidden-dim:
     values: [2,4,8,16,32,64]
   n-layers:
-    values: [0,1,2]
+    values: [0,1,2,3,4]
   d-rate:
-    values: [0,0.2]
+    values: [0,0.1,0.2,0.3]
   norm:
-    values: ["batch"]
+    values: ["batch", "layer"]
   lr:
     values: [1e-3]
   batch-size:
