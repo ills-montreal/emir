@@ -90,7 +90,7 @@ MODELS = [
 
 def preprocess_smiles(s):
     mol = dm.to_mol(s)
-    return dm.to_smiles(mol, True, True)
+    return dm.to_smiles(mol, True, False)
 
 
 def get_split_idx(
