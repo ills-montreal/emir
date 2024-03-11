@@ -157,12 +157,12 @@ def add_FF_downstream_args(parser: argparse.ArgumentParser):
     :param parser:
     :return:
     """
-    parser.add_argument("--hidden-dim", type=int, default=16)
-    parser.add_argument("--n-layers", type=int, default=0)
+    parser.add_argument("--hidden-dim", type=int, default=32)
+    parser.add_argument("--n-layers", type=int, default=1)
     parser.add_argument("--d-rate", type=float, default=0.0)
-    parser.add_argument("--norm", type=str, default="batch")
+    parser.add_argument("--norm", type=str, default="layer")
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--n-epochs", type=int, default=100)
 
     return parser
