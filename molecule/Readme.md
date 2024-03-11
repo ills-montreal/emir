@@ -9,6 +9,9 @@ To install the required packages, you can use the following command:
 
 ```bash
 pip install -r requirements.txt # TOCHANGE
+
+cd external_repo/pre-training-via-denoising
+pip install -e .
 ```
 
 ## :file_folder: Data Preprocessing

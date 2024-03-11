@@ -19,12 +19,24 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         default=[
-            "ecfp",
-            "secfp",
-            "cats",
-            "pmapper",
-            "cats/3D",
-            "pmapper/3D",
+            "ContextPred",
+            "GPT-GNN",
+            "GraphMVP",
+            "GROVER",
+            "EdgePred",
+            "AttributeMask",
+            "GraphLog",
+            "GraphCL",
+            "InfoGraph",
+            "Not-trained",
+            "MolBert",
+            "ChemBertMLM-5M",
+            "ChemBertMLM-10M",
+            "ChemBertMLM-77M",
+            "ChemBertMTR-5M",
+            "ChemBertMTR-10M",
+            "ChemBertMTR-77M",
+            "DenoisingPretrainingPQCMv4"
         ],
         help="List of models to compare",
     )
@@ -41,12 +53,24 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         default=[
-            "ecfp",
-            "secfp",
-            "cats",
-            "pmapper",
-            "cats/3D",
-            "pmapper/3D",
+            "ContextPred",
+            "GPT-GNN",
+            "GraphMVP",
+            "GROVER",
+            "EdgePred",
+            "AttributeMask",
+            "GraphLog",
+            "GraphCL",
+            "InfoGraph",
+            "Not-trained",
+            "MolBert",
+            "ChemBertMLM-5M",
+            "ChemBertMLM-10M",
+            "ChemBertMLM-77M",
+            "ChemBertMTR-5M",
+            "ChemBertMTR-10M",
+            "ChemBertMTR-77M",
+            "DenoisingPretrainingPQCMv4"
         ],
         help="List of descriptors to compare",
     )
@@ -77,14 +101,14 @@ def add_knife_args(parser: argparse.ArgumentParser):
     :param parser:
     :return:
     """
-    parser.add_argument("--cond-modes", type=int, default=3)
-    parser.add_argument("--marg-modes", type=int, default=3)
+    parser.add_argument("--cond-modes", type=int, default=6)
+    parser.add_argument("--marg-modes", type=int, default=6)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch-size", type=int, default=8192)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--n-epochs", type=int, default=10)
     parser.add_argument("--n-epochs-marg", type=int, default=10)
-    parser.add_argument("--ff-layers", type=int, default=3)
+    parser.add_argument("--ff-layers", type=int, default=2)
     parser.add_argument("--cov-diagonal", type=str, default="var")
     parser.add_argument("--cov-off-diagonal", type=str, default="")
     parser.add_argument("--optimize-mu", type=str, default="true")

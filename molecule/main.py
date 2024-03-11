@@ -8,7 +8,6 @@ import datamol as dm
 import pandas as pd
 import wandb
 
-from tqdm import tqdm
 
 from utils.knife_utils import compute_all_mi
 from parser_mol import (
@@ -62,17 +61,11 @@ def main():
     else:
         mols = None
 
-    p_bar = tqdm(
-        total=len(args.models) * len(args.descriptors) * args.n_runs,
-        desc="Progression",
-        position=0,
-    )
 
     all_results = compute_all_mi(
         args=args,
         smiles=smiles,
         mols=mols,
-        p_bar=p_bar,
     )
     return all_results
 
