@@ -12,6 +12,10 @@ moleculenet_models = [
     "InfoGraph",
 ]
 
+denoising_models = [
+    "DenoisingPretrainingPQCMv4",
+]
+
 
 class ModelFactory:
     def __new__(cls, name: str):
@@ -19,6 +23,10 @@ class ModelFactory:
             from .moleculenet import get_embeddings_from_model_moleculenet
 
             return get_embeddings_from_model_moleculenet
+        elif name in denoising_models:
+            from .denoising_models import get_embeddings_from_model_denoising
+
+            return get_embeddings_from_model_denoising
         else:
             from .transformers import get_embeddings_from_transformers
 

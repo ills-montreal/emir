@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 import datamol as dm
 from scipy.spatial.distance import pdist
@@ -17,7 +18,7 @@ overlapping_precision = 1e-1
 sigma = 2.0
 
 
-def get_positions_charges_from_path(path: str, i0, i1):
+def get_positions_charges_from_mols(mols_list:List[dm.Mol], i0, i1):
     """
     Get the positions and charges of the atoms from a file.
 
@@ -26,8 +27,7 @@ def get_positions_charges_from_path(path: str, i0, i1):
     :param path: str
     :return: Tuple[torch.Tensor, torch.Tensor]
     """
-    mols = dm.read_sdf(path)
-    mols = mols[i0 : min(i1, len(mols))]
+    mols = mols_list[i0 : min(i1, len(mols_list))]
     n_molecules = len(mols)
 
     max_atoms = 0
@@ -46,6 +46,7 @@ def get_positions_charges_from_path(path: str, i0, i1):
             full_charges[i, : len(c.GetPositions())] = [
                 a.GetAtomicNum() for a in mol.GetAtoms()
             ]
+            break
 
     mask = full_charges <= 2
     valence_charges = full_charges * mask
@@ -181,7 +182,8 @@ def get_scatt_embeddings(pos, valence_charges, full_charges):
 
 
 def get_scatt_from_path(path: str, i0, i1):
-    pos, valence_charges, full_charges = get_positions_charges_from_path(path, i0, i1)
+    mols = dm.read_sdf(path)
+    pos, valence_charges, full_charges = get_positions_charges_from_mols(mols, i0, i1)
     return get_scatt_embeddings(pos, valence_charges, full_charges)
 
 

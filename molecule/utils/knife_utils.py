@@ -23,6 +23,7 @@ from parser_mol import (
 )
 from models.model_paths import get_model_path
 from utils import MolecularFeatureExtractor
+from molecule.models.denoising_models import name2path
 
 import logging
 
@@ -44,9 +45,8 @@ def get_embedders(all_embedders, feature_extractor):
             name=model_name,
         )
     for model_name in all_embedders:
-        if (
-            not model_name in embeddings_fn
-            and model_name in PIPELINE_CORRESPONDANCY.keys()
+        if not model_name in embeddings_fn and (
+            model_name in PIPELINE_CORRESPONDANCY.keys() or model_name in name2path
         ):
             embeddings_fn[model_name] = partial(
                 feature_extractor.get_features,
@@ -248,7 +248,6 @@ def compute_all_mi(
     args: argparse.Namespace,
     smiles: List[str],
     mols: List[dm.Mol] = None,
-    p_bar: tqdm = None,
 ) -> pd.DataFrame:
     results = []
     marginal_kernels = {}

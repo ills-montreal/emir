@@ -61,7 +61,7 @@ def main():
         valid_smiles = []
         valid_mols = []
         for i, s in enumerate(tqdm(smiles, desc="Generating graphs")):
-            if can_be_2d_input(s, mols[i]):
+            if can_be_2d_input(s, mols[i]) and not "." in s:
                 valid_smiles.append(s)
                 valid_mols.append(mols[i])
 
