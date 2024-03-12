@@ -108,12 +108,10 @@ class KNIFEEstimator:
             x, y, record_loss=record_loss, fit_only_marginal=fit_only_marginal
         )
 
-
         with torch.no_grad():
             mutual_information, marg_ent, cond_ent = self.knife(x, y)
 
         return mutual_information.item(), marg_ent.item(), cond_ent.item()
-
 
     def eval_per_sample(
         self,
