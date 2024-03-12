@@ -125,3 +125,46 @@ def generate_knife_config_from_args(args: argparse.Namespace) -> KNIFEArgs:
         margin_lr=args.margin_lr,
     )
     return knife_config
+
+
+def add_FF_downstream_args(parser: argparse.ArgumentParser):
+    """
+    Add the arguments for the Feed Forward model. The parameters will be transmitted to the FFConfig class.
+    :param parser:
+    :return:
+    """
+    parser.add_argument("--hidden-dim", type=int, default=16)
+    parser.add_argument("--n-layers", type=int, default=0)
+    parser.add_argument("--d-rate", type=float, default=0.0)
+    parser.add_argument("--norm", type=str, default="batch")
+    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--n-epochs", type=int, default=100)
+
+    return parser
+
+
+
+
+def add_downstream_args(parser: argparse.ArgumentParser):
+    """
+    Add the arguments for the downstream model. The parameters will be transmitted to the FFConfig class.
+    :param parser:
+    :return:
+    """
+    parser.add_argument("--datasets", type=str, nargs="+", default=["TOX"])
+    parser.add_argument("--length", type=int, default=1024)
+    parser.add_argument(
+        "--embedders",
+        type=str,
+        nargs="+",
+        default=None,
+        required=False,
+        help="Embedders to use",
+    )
+    parser.add_argument("--n-runs", type=int, default=5)
+    parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--plot-loss", action="store_true")
+    parser.set_defaults(plot_loss=False)
+
+    return parser
