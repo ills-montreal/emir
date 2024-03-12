@@ -36,7 +36,11 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "ChemBertMTR-5M",
             "ChemBertMTR-10M",
             "ChemBertMTR-77M",
-            "DenoisingPretrainingPQCMv4"
+            "ChemGPT-1.2B",
+            "ChemGPT-19M",
+            "ChemGPT-4.7M",
+            "DenoisingPretrainingPQCMv4",
+            "FRAD_QM9",
         ],
         help="List of models to compare",
     )
@@ -70,7 +74,11 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "ChemBertMTR-5M",
             "ChemBertMTR-10M",
             "ChemBertMTR-77M",
-            "DenoisingPretrainingPQCMv4"
+            "ChemGPT-1.2B",
+            "ChemGPT-19M",
+            "ChemGPT-4.7M",
+            "DenoisingPretrainingPQCMv4",
+            "FRAD_QM9",
         ],
         help="List of descriptors to compare",
     )
