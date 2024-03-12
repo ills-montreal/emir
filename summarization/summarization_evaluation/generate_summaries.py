@@ -37,7 +37,19 @@ GENERATION_CONFIGS = {
         "do_sample": False,
         "num_beams": 3,
     },
+
+    **{ f"beam_sampling_{i}": {"max_new_tokens": i, "do_sample": True, "num_beams": 3, "top_p": 0.95} for i in [5, 10, 20, 50, 100, 200, 500]},
+    **{ f"beam_sampling_topp_{str(topp).replace('.', '')}": {"max_new_tokens": 100, "do_sample": True, "num_beams": 3, "top_p": 0.95} for topp in [0.5, 0.8, 0.95, 0.99]},
 }
+
+# add base.csv config to all configs
+for key, value in GENERATION_CONFIGS.items():
+    GENERATION_CONFIGS[key] = {
+        "max_length": 2048,
+        "min_length": 0,
+        "early_stopping": True,
+        **value,
+    }
 
 
 def parse_args():
@@ -65,18 +77,14 @@ def parse_args():
 
 
 def prepare_dataset(dataset_name, dataset_path=None) -> Dataset:
-    if dataset_name == "rotten_tomatoes":
+    if dataset_name == "rotten_tomatoes_long":
         path = Path(dataset_path) / "rotten_tomatoes_critic_reviews.csv"
-        dataset = pd.read_csv(path)
+        dataset = pd.read_csv(path) # rotten_tomatoes_link,critic_name,top_critic,publisher_name,review_type,review_score,review_date,review_content
 
-        # get rotten_tomatoes_link as id, review_content as text and review_score as sentiment
-        new_dataset = pd.DataFrame(
-            {
-                "id": dataset.rotten_tomatoes_link,
-                "text": dataset.review_content,
-                "sentiment": dataset.review_score,
-            }
-        )
+        # group by link and join reviews
+        new_dataset = dataset.groupby("rotten_tomatoes_link")["review_content"].apply(lambda x: " ".join(x)).reset_index()
+        # rename review_content to text
+        new_dataset = new_dataset.rename(columns={"review_content": "text"})
 
         # remove rows with missing values
         new_dataset = new_dataset.dropna()
@@ -98,7 +106,8 @@ def prepare_dataset(dataset_name, dataset_path=None) -> Dataset:
         test = test.rename_column("document", "text")
         # rename summary to gold_summary
         test = test.rename_column("summary", "gold_summary")
-        dataset = test.to_pandas()
+
+        test = test.to_pandas()
 
     # cnn dailymail
     elif dataset_name == "cnn_dailymail":
@@ -120,6 +129,93 @@ def prepare_dataset(dataset_name, dataset_path=None) -> Dataset:
         test = test.rename_column("abstract", "gold_summary")
 
         dataset = test.to_pandas()
+
+    elif dataset_name == "multi_news":
+        dataset = load_dataset("multi_news")
+        test = dataset["test"]
+        # rename document to text
+        test = test.rename_column("document", "text")
+        # rename summary to gold_summary
+        test = test.rename_column("summary", "gold_summary")
+
+        validation = dataset["validation"]
+        # rename document to text
+        validation = validation.rename_column("document", "text")
+        # rename summary to gold_summary
+        validation = validation.rename_column("summary", "gold_summary")
+
+        dataset = pd.concat([test.to_pandas(), validation.to_pandas()])
+
+    elif dataset_name == "xlsum_fra":
+        dataset = load_dataset("csebuetnlp/xlsum", "french")
+        val, test, train = dataset["validation"], dataset["test"], dataset["train"]
+
+        # concat val and test
+        dataset = pd.concat([val.to_pandas(), test.to_pandas(), train.to_pandas()])
+
+    elif dataset_name == "xlsum_deu":
+        dataset = load_dataset("csebuetnlp/xlsum", "german")
+        val, test, train = dataset["validation"], dataset["test"], dataset["train"]
+
+        # concat val and test
+        dataset = pd.concat([val.to_pandas(), test.to_pandas(), train.to_pandas()])
+
+    elif dataset_name == "xlsum_spa":
+        dataset = load_dataset("csebuetnlp/xlsum", "spanish")
+        val, test, train = dataset["validation"], dataset["test"], dataset["train"]
+
+        # rename summary to gold_summary
+        val = val.rename_column("summary", "gold_summary")
+        test = test.rename_column("summary", "gold_summary")
+        train = train.rename_column("summary", "gold_summary")
+
+        # concat val and test
+        dataset = pd.concat([val.to_pandas(), test.to_pandas(), train.to_pandas()])
+
+    elif dataset_name == "orange_fra":
+        dataset = load_dataset("orange_sum", "abstract")
+        val, test, train = dataset["validation"], dataset["test"], dataset["train"]
+
+        # rename summary to gold_summary
+        val = val.rename_column("summary", "gold_summary")
+        test = test.rename_column("summary", "gold_summary")
+        train = train.rename_column("summary", "gold_summary")
+
+        dataset = pd.concat([val.to_pandas(), test.to_pandas(), train.to_pandas()])
+
+    elif dataset_name == "mlsum_deu":
+        dataset = load_dataset("mlsum", "de")
+        val, test, train = dataset["validation"], dataset["test"], dataset["train"]
+
+        # rename summary to gold_summary
+        val = val.rename_column("summary", "gold_summary")
+        test = test.rename_column("summary", "gold_summary")
+        train = train.rename_column("summary", "gold_summary")
+
+        dataset = pd.concat([val.to_pandas(), test.to_pandas(), train.to_pandas()])
+
+    elif dataset_name == "mlsum_fra":
+        dataset = load_dataset("mlsum", "fr")
+        val, test, train = dataset["validation"], dataset["test"], dataset["train"]
+
+        # rename summary to gold_summary
+        val = val.rename_column("summary", "gold_summary")
+        test = test.rename_column("summary", "gold_summary")
+        train = train.rename_column("summary", "gold_summary")
+
+        dataset = pd.concat([val.to_pandas(), test.to_pandas(), train.to_pandas()])
+
+    elif dataset_name == "mlsum_spa":
+        dataset = load_dataset("mlsum", "es")
+        val, test, train = dataset["validation"], dataset["test"], dataset["train"]
+
+        # rename summary to gold_summary
+        val = val.rename_column("summary", "gold_summary")
+        test = test.rename_column("summary", "gold_summary")
+        train = train.rename_column("summary", "gold_summary")
+
+        dataset = pd.concat([val.to_pandas(), test.to_pandas(), train.to_pandas()])
+
     else:
         raise ValueError(f"Dataset {dataset_name} not supported.")
 
@@ -127,6 +223,16 @@ def prepare_dataset(dataset_name, dataset_path=None) -> Dataset:
     dataset = Dataset.from_pandas(dataset)
 
     return dataset
+
+# dataset = load_dataset("csebuetnlp/xlsum", "french")
+# dataset = load_dataset("csebuetnlp/xlsum", "german")
+# dataset = load_dataset("csebuetnlp/xlsum", "spanish")
+# dataset = load_dataset("orange_sum", "abstract")
+# dataset = load_dataset("mlsum", "de")
+# dataset = load_dataset("mlsum", "fr")
+# dataset = load_dataset("mlsum", "es")
+
+
 
 
 def evaluate_summarizer(
@@ -234,7 +340,7 @@ def main():
 
     # create output dir if it doesn't exist
     if not output_path.parent.exists():
-        output_path.parent.mkdir(parents=True)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
     dataset.to_pandas().to_csv(output_path, index=False, encoding="utf-8", sep=";")
 
