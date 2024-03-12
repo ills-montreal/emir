@@ -46,7 +46,7 @@ class KNIFEArgs:
     ff_layer_norm: bool = True
     ff_layers: int = 2
     ff_dim_hidden: Optional[int] = 0
-    async_lr: float = 0.1
+    margin_lr: float = 1e-3
 
 
 class KNIFEEstimator:
@@ -150,7 +150,7 @@ class KNIFEEstimator:
             y,
             batch_size=self.args.batch_size,
         )
-        optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.async_lr)
+        optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.margin_lr)
 
         if (
             self.precomputed_marg_kernel is None
