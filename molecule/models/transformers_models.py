@@ -26,6 +26,7 @@ def get_hugging_face_model(model_name):
     elif "ChemGPT" in model_name:
         model = AutoModelForCausalLM.from_pretrained(model_name)
         tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     else:
         model = AutoModel.from_pretrained(model_name)
     return model, tokenizer
