@@ -13,7 +13,7 @@ moleculenet_models = [
 ]
 
 denoising_models = [
-    "DenoisingPretrainingPQCMv4",
+    "DenoisingPretrainingPQCMv4", "FRAD_QM9"
 ]
 
 

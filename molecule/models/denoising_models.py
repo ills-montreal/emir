@@ -1,17 +1,22 @@
 import torch
 import torch.nn as nn
-from torchmdnet.models.model import load_model
+from torchmdnet.models.model import load_model as load_model_torchmdnet
+from molecule.external_repo.Frad.torchmdnet_frad.models.model import load_model as load_model_frad
 
 
 name2path = {
-    "DenoisingPretrainingPQCMv4": "external_repo/pre-training-via-denoising/checkpoints/denoised-pcqm4mv2.ckpt",
+    "DenoisingPretrainingPQCMv4": ("external_repo/pre-training-via-denoising/checkpoints/denoised-pcqm4mv2.ckpt", "torchmdnet"),
+    "FRAD_QM9": ("backbone_pretrained_models/FRAD/frad.ckpt", "frad"),
 }
 
 
 class DenoisingModel(nn.Module):
     def __init__(self, name: str):
         super(DenoisingModel, self).__init__()
-        self.model = load_model(name2path[name], derivative=False)
+        path, module = name2path[name]
+        load_fn = load_model_torchmdnet if module == "torchmdnet" else load_model_frad
+
+        self.model = load_fn(path, derivative=False)
 
     def forward(self, z, pos, batch):
         x, v, z, pos, batch = self.model.representation_model(z, pos, batch=batch)
