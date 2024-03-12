@@ -94,7 +94,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--stopping-criterion", type=str, default="early_stopping")
     parser.add_argument("--eps", type=float, default=1e-5)
     parser.add_argument("--n-epochs-stop", type=int, default=5)
-    parser.add_argument("--async-lr", type=float, default=0.01)
+    parser.add_argument("--margin-lr", type=float, default=0.01)
     return parser
 
 
@@ -122,6 +122,6 @@ def generate_knife_config_from_args(args: argparse.Namespace) -> KNIFEArgs:
         stopping_criterion=args.stopping_criterion,
         n_epochs_stop=args.n_epochs_stop,
         eps=args.eps,
-        async_lr=args.async_lr,
+        margin_lr=args.margin_lr,
     )
     return knife_config
