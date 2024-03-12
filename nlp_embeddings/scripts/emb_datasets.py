@@ -10,11 +10,16 @@ AVAILABLE_DATASETS = {
     "mteb/sts14-sts": None,
     "mteb/sts15-sts": None,
     "mteb/amazon_polarity": None,
+<<<<<<< HEAD
+=======
+    "dennlinger/wiki-paragraphs": None,
+>>>>>>> 0edeba6 (merge knife estimator)
     "mteb/banking77": None,
     "mteb/sickr-sts": None,
     "mteb/biosses-sts": None,
     "mteb/stsbenchmark-sts": None,
     "mteb/imdb": None,
+<<<<<<< HEAD
     "snli": None,
     "dennlinger/wiki-paragraphs": None,
 }
@@ -147,6 +152,15 @@ def load_emd_classif_dataset(task_name):
 
     return dataset, splits, TASKS_DATASET[task_name]
 
+=======
+    "nvidia/OpenMathInstruct-1": None,
+    "snli": None,
+    "Open-Orca/OpenOrca": None,
+    "cnn_dailymail": "3.0.0",
+    "EdinburghNLP/xsum": None,
+}
+
+>>>>>>> 0edeba6 (merge knife estimator)
 
 def load_emb_dataset(dataset_name, config, split="test"):
     # Load the dataset
@@ -234,9 +248,13 @@ def load_emb_dataset(dataset_name, config, split="test"):
     dataset = dataset.drop_duplicates()
 
     # make a dataset from the pandas dataframe
+<<<<<<< HEAD
     dataset = dataset.head(100000)
     dataset = Dataset.from_pandas(dataset)
     # keep max 100 000 rows
+=======
+    dataset = Dataset.from_pandas(dataset)
+>>>>>>> 0edeba6 (merge knife estimator)
 
     return dataset
 
@@ -261,6 +279,7 @@ if __name__ == "__main__":
 
     else:
         print("Caching datasets...")
+<<<<<<< HEAD
 
         for task_name in TASKS_DATASET:
             print(f"Loading {task_name}...")
@@ -268,6 +287,8 @@ if __name__ == "__main__":
 
             print(dataset)
 
+=======
+>>>>>>> 0edeba6 (merge knife estimator)
         for dataset_name, config in AVAILABLE_DATASETS.items():
             print(f"Loading {dataset_name}...")
             if config is not None:
@@ -276,3 +297,14 @@ if __name__ == "__main__":
                 load_dataset(dataset_name, download_mode="force_redownload")
 
         print("Done!")
+<<<<<<< HEAD
+=======
+
+
+instru = "Do that"
+answer = "I did it"
+template = """<s> [INST] [INSTR] [/INST] [ANSW] </s>"""
+
+template = template.replace("[INST]", "INST")
+template = template.replace("[INSTR]", instru)
+>>>>>>> 0edeba6 (merge knife estimator)

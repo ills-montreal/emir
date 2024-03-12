@@ -1,5 +1,6 @@
 from sentence_transformers import SentenceTransformer
 
+<<<<<<< HEAD
 
 SMALL_MODELS = [
     "BAAI/bge-base-en-v1.5",
@@ -27,6 +28,14 @@ SMALL_MODELS = [
     "sentence-transformers/gtr-t5-xl",
     "intfloat/e5-small",
     "sentence-transformers/gtr-t5-large",
+=======
+SMALL_MODELS = [
+    "avsolatorio/GIST-Embedding-v0",
+    "llmrails/ember-v1",
+    "jamesgpt1/sf_model_e5",
+    "thenlper/gte-large",
+    "avsolatorio/GIST-small-Embedding-v0",
+>>>>>>> 0edeba6 (merge knife estimator)
     "thenlper/gte-base",
     "nomic-ai/nomic-embed-text-v1",
     "sentence-transformers/all-distilroberta-v1",
