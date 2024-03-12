@@ -108,6 +108,7 @@ class KNIFEEstimator:
             x, y, record_loss=record_loss, fit_only_marginal=fit_only_marginal
         )
 
+
         with torch.no_grad():
             mutual_information, marg_ent, cond_ent = self.knife(x, y)
 
@@ -115,8 +116,12 @@ class KNIFEEstimator:
 
 
     def eval_per_sample(
-        self, x: torch.Tensor, y: torch.Tensor, record_loss: Optional[bool] = False
-    ) -> Tuple[float, float, float]:
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        record_loss: Optional[bool] = False,
+        eval_batch_size: Optional[int] = 4096,
+    ) -> Tuple[List[float], List[float], List[float], List[float]]:
         """
         Mutual information between x and y
 
@@ -129,16 +134,24 @@ class KNIFEEstimator:
         self.knife = KNIFE(self.args, self.x_dim, self.y_dim).to(self.args.device)
 
         # Fit the model
-        self.fit_estimator(x, y, record_loss=record_loss)
+        losses = self.fit_estimator(x, y, record_loss=record_loss)
+        eval_loader = torch.utils.data.DataLoader(
+            torch.utils.data.TensorDataset(x, y), batch_size=eval_batch_size
+        )
 
-        # Move model back to CPU
-        self.knife = self.knife.to("cpu")
-        x, y = x.to("cpu"), y.to("cpu")
-
+        mi, h1, h1h2 = [], [], []
         with torch.no_grad():
-            mutual_information = self.knife.pmi(x, y)
+            for x_batch, y_batch in tqdm(eval_loader, desc="Evaluating", position=-1):
+                with torch.no_grad():
+                    mutual_information, marg_ent, cond_ent = self.knife.forward_samples(
+                        x_batch, y_batch
+                    )
+                    # tolist , extend
+                    mi.extend(mutual_information.cpu().tolist())
+                    h1.extend(marg_ent.cpu().tolist())
+                    h1h2.extend(cond_ent.cpu().tolist())
 
-        return mutual_information.squeeze().cpu().detach().numpy()
+        return mi, h1, h1h2, losses
 
     def early_stopping(
         self,
@@ -191,7 +204,6 @@ class KNIFEEstimator:
                 self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
 
         self.knife.freeze_marginal()
-
         if not fit_only_marginal:  # If we want to fit the full KNIFE estimator
             # First, we compute the marginal entropy on the dataset (used in the early stopping criterion)
             with torch.no_grad():
