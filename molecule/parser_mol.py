@@ -19,8 +19,12 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         default=[
-            "Not-trained",
-            "InfoGraph",
+            "ecfp",
+            "secfp",
+            "cats",
+            "pmapper",
+            "cats/3D",
+            "pmapper/3D",
         ],
         help="List of models to compare",
     )
@@ -30,29 +34,18 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         action="store_true",
         help="Compute both MI(x1, x2) and MI(x2, x1)",
     )
-    parser.set_defaults(compute_both_mi=False)
+    parser.set_defaults(compute_both_mi=True)
 
     parser.add_argument(
         "--descriptors",
         type=str,
         nargs="+",
         default=[
-            "physchem",
-            "ecfp-count",
             "ecfp",
-            "estate",
-            "erg",
-            "rdkit",
-            "topological",
-            "avalon",
-            "maccs",
-            "scaffoldkeys",
+            "secfp",
             "cats",
-            "default",
-            "gobbi",
             "pmapper",
             "cats/3D",
-            "gobbi/3D",
             "pmapper/3D",
         ],
         help="List of descriptors to compare",
@@ -61,26 +54,20 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--dataset",
         type=str,
-        default="hERG_Karim",
+        default="ClinTox",
         help="Dataset to use",
     )
 
     parser.add_argument(
-        "--out_file",
+        "--out-dir",
         type=str,
         default="results",
         help="Output file",
     )
 
-    parser.add_argument(
-        "--precompute-3d",
-        action="store_true",
-        help="Precompute 3D coordinates",
-    )
-    parser.set_defaults(precompute_3d=False)
-
     parser.add_argument("--fp-length", type=int, default=1024)
-
+    parser.add_argument("--mds-dim", type=int, default=0)
+    parser.add_argument("--n-jobs", type=int, default=1)
     return parser
 
 
@@ -90,19 +77,24 @@ def add_knife_args(parser: argparse.ArgumentParser):
     :param parser:
     :return:
     """
-    parser.add_argument("--cond-modes", type=int, default=6)
-    parser.add_argument("--marg-modes", type=int, default=6)
+    parser.add_argument("--cond-modes", type=int, default=3)
+    parser.add_argument("--marg-modes", type=int, default=3)
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--batch-size", type=int, default=8192)
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--n-epochs", type=int, default=500)
-    parser.add_argument("--ff-layers", type=int, default=2)
+    parser.add_argument("--n-epochs", type=int, default=10)
+    parser.add_argument("--n-epochs-marg", type=int, default=10)
+    parser.add_argument("--ff-layers", type=int, default=3)
     parser.add_argument("--cov-diagonal", type=str, default="var")
     parser.add_argument("--cov-off-diagonal", type=str, default="")
-    parser.add_argument("--optimize-mu", type=str, default="false")
+    parser.add_argument("--optimize-mu", type=str, default="true")
     parser.add_argument("--ff-residual-connection", type=str, default="false")
+    parser.add_argument("--ff-hidden-dim", type=int, default=0)
     parser.add_argument("--use-tanh", type=str, default="true")
     parser.add_argument("--stopping-criterion", type=str, default="early_stopping")
+    parser.add_argument("--eps", type=float, default=1e-5)
+    parser.add_argument("--n-epochs-stop", type=int, default=5)
+    parser.add_argument("--margin-lr", type=float, default=0.01)
     return parser
 
 
@@ -119,11 +111,17 @@ def generate_knife_config_from_args(args: argparse.Namespace) -> KNIFEArgs:
         batch_size=args.batch_size,
         device=args.device,
         n_epochs=args.n_epochs,
+        n_epochs_marg=args.n_epochs_marg,
         ff_layers=args.ff_layers,
+        ff_dim_hidden=args.ff_hidden_dim,
         cov_diagonal=args.cov_diagonal,
         cov_off_diagonal=args.cov_off_diagonal,
-        optimize_mu=args.optimize_mu,
+        optimize_mu=args.optimize_mu == "true",
         ff_residual_connection=args.ff_residual_connection == "true",
-        use_tanh=args.use_tanh,
+        use_tanh=args.use_tanh == "true",
+        stopping_criterion=args.stopping_criterion,
+        n_epochs_stop=args.n_epochs_stop,
+        eps=args.eps,
+        margin_lr=args.margin_lr,
     )
     return knife_config

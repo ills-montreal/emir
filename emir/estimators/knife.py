@@ -10,21 +10,40 @@ import torch.nn as nn
 from .kernels import KernelFactory
 
 
-class KNIFE(nn.Module):
-    def __init__(self, args, zc_dim, zd_dim):
-        super(KNIFE, self).__init__()
-        self.kernel_marg, self.kernel_cond = KernelFactory(
-            kernel="gaussian", args=args, zc_dim=zc_dim, zd_dim=zd_dim
-        )
 
-    def forward(self, z_c, z_d):  # samples have shape [sample_size, dim]
+class KNIFE(nn.Module):
+    def __init__(
+        self,
+        args,
+        zc_dim,
+        zd_dim,
+        kernel_type="gaussian",
+        init_samples=None,
+        precomputed_marg_kernel=None,
+    ):
+        super(KNIFE, self).__init__()
+        self.kernel_type = kernel_type
+        self.kernel_marg, self.kernel_cond = KernelFactory(
+            kernel=kernel_type,
+            args=args,
+            zc_dim=zc_dim,
+            zd_dim=zd_dim,
+            init_samples=init_samples,
+        )
+        if precomputed_marg_kernel is not None:
+            self.kernel_marg = precomputed_marg_kernel.to(args.device)
+
+    def run_kernels(self, z_c, z_d):
         marg_ent = self.kernel_marg(z_d)
         cond_ent = self.kernel_cond(z_c, z_d)
+        return marg_ent, cond_ent
+
+    def forward(self, z_c, z_d):  # samples have shape [sample_size, dim]
+        marg_ent, cond_ent = self.run_kernels(z_c, z_d)
         return marg_ent - cond_ent, marg_ent, cond_ent
 
     def learning_loss(self, z_c, z_d):
-        marg_ent = self.kernel_marg(z_d)
-        cond_ent = self.kernel_cond(z_c, z_d)
+        marg_ent, cond_ent = self.run_kernels(z_c, z_d)
         return marg_ent + cond_ent
 
     def pmi(self, z_c, z_d):
@@ -35,3 +54,9 @@ class KNIFE(nn.Module):
 
     def I(self, *args, **kwargs):
         return self.forward(*args[:2], **kwargs)[0]
+
+    def freeze_marginal(self):
+        self.kernel_marg.requires_grad_(False)
+
+    def unfreeze_marginal(self):
+        self.kernel_marg.requires_grad_(True)

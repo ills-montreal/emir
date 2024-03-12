@@ -7,7 +7,7 @@ from tqdm import trange
 import matplotlib.pyplot as plt
 
 from moleculenet_encoding import mol_to_graph_data_obj_simple
-from utils import get_embeddings_from_model_moleculenet, get_molfeat_descriptors
+from utils_notebook import get_embeddings_from_model_moleculenet, get_molfeat_descriptors
 from sklearn.metrics import average_precision_score, f1_score, roc_auc_score
 
 
