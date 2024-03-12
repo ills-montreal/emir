@@ -186,4 +186,4 @@ molecule/results.csv
 *wandb*
 molecule/fig
 molecule/results
-molecule/external_repo/*
+molecule/external_repo/pre-training-via-denoising

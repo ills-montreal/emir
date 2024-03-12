@@ -23,7 +23,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "GPT-GNN",
             "GraphMVP",
             "GROVER",
-            "EdgePred",
+            # "EdgePred", # This model is especially bad and makes visualization hard
             "AttributeMask",
             "GraphLog",
             "GraphCL",
@@ -57,7 +57,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "GPT-GNN",
             "GraphMVP",
             "GROVER",
-            "EdgePred",
+            # "EdgePred", # This model is especially bad and makes visualization hard
             "AttributeMask",
             "GraphLog",
             "GraphCL",
@@ -166,8 +166,6 @@ def add_FF_downstream_args(parser: argparse.ArgumentParser):
     parser.add_argument("--n-epochs", type=int, default=100)
 
     return parser
-
-
 
 
 def add_downstream_args(parser: argparse.ArgumentParser):
