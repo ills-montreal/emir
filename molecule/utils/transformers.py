@@ -1,10 +1,11 @@
 import torch
 from torch.utils.data import DataLoader
 import torch_geometric.transforms as tgp
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModel, AutoTokenizer, GPTNeoForCausalLM
 from transformers.modeling_outputs import MaskedLMOutput, BaseModelOutputWithPoolingAndCrossAttentions
 from typing import List, Optional
 import datamol as dm
+import selfies as sf
 
 from molecule.models.transformers_models import get_hugging_face_model
 
@@ -13,16 +14,27 @@ from molecule.models.transformers_models import get_hugging_face_model
 def get_embeddings_from_transformers_batch(
     model: AutoModel, token: AutoTokenizer, batch: List[str], device: str
 ):
-    input_tok = token(
-        batch, padding=True, truncation=True, return_tensors="pt", max_length=128
-    ).to(device)
-    model_out = model(**input_tok)
-    if isinstance(model_out, MaskedLMOutput):
-        embeddings = model_out.logits[:, 0, :]
-    elif isinstance(model_out, BaseModelOutputWithPoolingAndCrossAttentions):
-        embeddings = model_out.pooler_output
+
+    if isinstance(model, GPTNeoForCausalLM): # ChemGPT using SELFIES
+        batch = [sf.encoder(s) for s in batch]
+        input_tok = token(
+            batch, padding=True, truncation=True, return_tensors="pt", max_length=128
+        ).to(device)
+        model_out = model(output_hidden_states=True, **input_tok)
+        embeddings = (input_tok["attention_mask"].unsqueeze(2) * model_out.hidden_states[-1]).sum(dim=1) / input_tok["attention_mask"].sum(dim=1).unsqueeze(1)
     else:
-        embeddings = model_out
+        input_tok = token(
+            batch, padding=True, truncation=True, return_tensors="pt", max_length=128
+        ).to(device)
+        model_out = model(**input_tok)
+        if len(model_out.hidden_states) > 1:
+            embeddings = model_out.hidden_states[0]
+        if isinstance(model_out, MaskedLMOutput):
+            embeddings = model_out.logits[:, 0, :]
+        elif isinstance(model_out, BaseModelOutputWithPoolingAndCrossAttentions):
+                embeddings = model_out.pooler_output
+        else:
+            embeddings = model_out
 
     return embeddings
 
