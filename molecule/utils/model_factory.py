@@ -12,9 +12,7 @@ moleculenet_models = [
     "InfoGraph",
 ]
 
-denoising_models = [
-    "DenoisingPretrainingPQCMv4", "FRAD_QM9"
-]
+denoising_models = ["DenoisingPretrainingPQCMv4", "FRAD_QM9"]
 
 
 class ModelFactory:
@@ -27,6 +25,12 @@ class ModelFactory:
             from .denoising_models import get_embeddings_from_model_denoising
 
             return get_embeddings_from_model_denoising
+
+        elif name.startswith("MolR"):
+            from .molr import get_embeddings_from_molr
+
+            return get_embeddings_from_molr
+
         else:
             from .transformers import get_embeddings_from_transformers
 
