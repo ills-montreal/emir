@@ -11,14 +11,18 @@ AVAILABLE_DATASETS = {
     "mteb/sts15-sts": None,
     "mteb/amazon_polarity": None,
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     "dennlinger/wiki-paragraphs": None,
 >>>>>>> 0edeba6 (merge knife estimator)
+=======
+>>>>>>> 33a03ab (fix kinfe estimator)
     "mteb/banking77": None,
     "mteb/sickr-sts": None,
     "mteb/biosses-sts": None,
     "mteb/stsbenchmark-sts": None,
     "mteb/imdb": None,
+<<<<<<< HEAD
 <<<<<<< HEAD
     "snli": None,
     "dennlinger/wiki-paragraphs": None,
@@ -154,13 +158,125 @@ def load_emd_classif_dataset(task_name):
 
 =======
     "nvidia/OpenMathInstruct-1": None,
+=======
+>>>>>>> 33a03ab (fix kinfe estimator)
     "snli": None,
-    "Open-Orca/OpenOrca": None,
-    "cnn_dailymail": "3.0.0",
-    "EdinburghNLP/xsum": None,
+    "dennlinger/wiki-paragraphs": None,
 }
 
+<<<<<<< HEAD
 >>>>>>> 0edeba6 (merge knife estimator)
+=======
+# TASk_DATASET : Dict[Dict[str, str]], store config and type of task
+TASKS_DATASET = {
+    "yelp_review_full": {
+        "dataset_name": "yelp_review_full",
+        "config": None,
+        "task": "Sentiment classification",
+        "num_classes": 5,
+    },  # text, label
+    "paws-x;en": {
+        "dataset_name": "paws-x",
+        "config": "en",
+        "task": "Paraphrase identification",
+        "num_classes": 2,
+    },  # sentence1, sentence2, label
+    "sst2": {
+        "dataset_name": "sst2",
+        "config": None,
+        "task": "Sentiment classification",
+        "num_classes": 2,
+    },  # sentence, label
+    "tweet_eval;emoji": {
+        "dataset_name": "tweet_eval",
+        "config": "emoji",
+        "task": "Emoji prediction",
+        "n_classes": 20,
+    },  # text, label
+    "tweet_eval;emotion": {
+        "dataset_name": "tweet_eval",
+        "config": "emotion",
+        "task": "Emotion prediction",
+        "n_classes": 4,
+    },  # text, label
+    "tweet_eval;sentiment": {
+        "dataset_name": "tweet_eval",
+        "config": "sentiment",
+        "task": "Sentiment prediction",
+        "n_classes": 3,
+    },  # text, label
+    "rotten_tomatoes": {
+        "dataset_name": "rotten_tomatoes",
+        "config": None,
+        "task": "Sentiment classification",
+        "num_classes": 2,
+    },  # text, label
+    "imdb": {
+        "dataset_name": "imdb",
+        "config": None,
+        "task": "Sentiment classification",
+        "num_classes": 2,
+    },  # text, label
+    "clinc_oos;plus": {
+        "dataset_name": "clinc_oos",
+        "config": "plus",
+        "task": "Intent classification",
+        "num_classes": 151,
+    },  # text, intent
+}
+
+
+def load_emd_classif_dataset(task_name):
+    if task_name in TASKS_DATASET:
+        dataset_name = TASKS_DATASET[task_name]["dataset_name"]
+        config = TASKS_DATASET[task_name]["config"]
+    else:
+        raise ValueError(f"Task {task_name} not found in TASKS_DATASET")
+
+    dataset = load_dataset(dataset_name, config)
+
+    # what split is there?
+    splits = list(dataset.keys())
+
+    # normalize the datasets to have the same columns
+
+    if task_name == "paws-x;en":
+        for split in splits:
+            dataset[split] = dataset[split].map(
+                lambda x: {
+                    "text": x["sentence1"] + "\n\n" + x["sentence2"],
+                    "label": x["label"],
+                }
+            )
+
+    elif task_name == "tweet_eval;emoji":
+        pass
+    elif task_name == "tweet_eval;emotion":
+        pass
+    elif task_name == "tweet_eval;sentiment":
+        pass
+    elif task_name == "clinc_oos;plus":
+        for split in splits:
+            dataset[split] = dataset[split].map(
+                lambda x: {"text": x["text"], "label": x["intent"]}
+            )
+    elif task_name == "rotten_tomatoes":
+        pass
+    elif task_name == "imdb":
+        pass
+    elif task_name == "yelp_review_full":
+        pass
+    elif task_name == "sst2":
+        for split in splits:
+            dataset[split] = dataset[split].map(
+                lambda x: {"text": x["sentence"], "label": x["label"]}
+            )
+    else:
+        raise ValueError(f"Task {task_name} not found in TASKS_DATASET")
+
+    return dataset, splits, TASKS_DATASET[task_name]
+
+>>>>>>> 33a03ab (fix kinfe estimator)
 
 def load_emb_dataset(dataset_name, config, split="test"):
     # Load the dataset
@@ -249,12 +365,18 @@ def load_emb_dataset(dataset_name, config, split="test"):
 
     # make a dataset from the pandas dataframe
 <<<<<<< HEAD
+<<<<<<< HEAD
     dataset = dataset.head(100000)
     dataset = Dataset.from_pandas(dataset)
     # keep max 100 000 rows
 =======
     dataset = Dataset.from_pandas(dataset)
 >>>>>>> 0edeba6 (merge knife estimator)
+=======
+    dataset = dataset.head(100000)
+    dataset = Dataset.from_pandas(dataset)
+    # keep max 100 000 rows
+>>>>>>> 33a03ab (fix kinfe estimator)
 
     return dataset
 
@@ -280,6 +402,9 @@ if __name__ == "__main__":
     else:
         print("Caching datasets...")
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 33a03ab (fix kinfe estimator)
 
         for task_name in TASKS_DATASET:
             print(f"Loading {task_name}...")
@@ -287,8 +412,11 @@ if __name__ == "__main__":
 
             print(dataset)
 
+<<<<<<< HEAD
 =======
 >>>>>>> 0edeba6 (merge knife estimator)
+=======
+>>>>>>> 33a03ab (fix kinfe estimator)
         for dataset_name, config in AVAILABLE_DATASETS.items():
             print(f"Loading {dataset_name}...")
             if config is not None:
@@ -297,6 +425,7 @@ if __name__ == "__main__":
                 load_dataset(dataset_name, download_mode="force_redownload")
 
         print("Done!")
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 
@@ -308,3 +437,5 @@ template = """<s> [INST] [INSTR] [/INST] [ANSW] </s>"""
 template = template.replace("[INST]", "INST")
 template = template.replace("[INSTR]", instru)
 >>>>>>> 0edeba6 (merge knife estimator)
+=======
+>>>>>>> 33a03ab (fix kinfe estimator)

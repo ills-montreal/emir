@@ -1,6 +1,7 @@
 from sentence_transformers import SentenceTransformer
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 SMALL_MODELS = [
     "BAAI/bge-base-en-v1.5",
@@ -29,13 +30,40 @@ SMALL_MODELS = [
     "intfloat/e5-small",
     "sentence-transformers/gtr-t5-large",
 =======
+=======
+
+>>>>>>> 33a03ab (fix kinfe estimator)
 SMALL_MODELS = [
+    "BAAI/bge-base-en-v1.5",
+    "infgrad/stella-base-en-v2",
+    "intfloat/e5-large-v2",
+    "intfloat/multilingual-e5-small",
+    "sentence-transformers/sentence-t5-xl",
+    "sentence-transformers/sentence-t5-large",
+    "SmartComponents/bge-micro-v2",
+    "sentence-transformers/allenai-specter",
+    "sentence-transformers/average_word_embeddings_glove.6B.300d",
+    "sentence-transformers/average_word_embeddings_komninos",
+    "sentence-transformers/LaBSE",
     "avsolatorio/GIST-Embedding-v0",
+    "Muennighoff/SGPT-125M-weightedmean-nli-bitfit",
+    "princeton-nlp/sup-simcse-bert-base-uncased",
+    "jinaai/jina-embedding-s-en-v1",
+    "sentence-transformers/msmarco-bert-co-condensor",
+    "sentence-transformers/gtr-t5-base",
+    "izhx/udever-bloom-560m",
     "llmrails/ember-v1",
     "jamesgpt1/sf_model_e5",
     "thenlper/gte-large",
+<<<<<<< HEAD
     "avsolatorio/GIST-small-Embedding-v0",
 >>>>>>> 0edeba6 (merge knife estimator)
+=======
+    "TaylorAI/gte-tiny",
+    "sentence-transformers/gtr-t5-xl",
+    "intfloat/e5-small",
+    "sentence-transformers/gtr-t5-large",
+>>>>>>> 33a03ab (fix kinfe estimator)
     "thenlper/gte-base",
     "nomic-ai/nomic-embed-text-v1",
     "sentence-transformers/all-distilroberta-v1",
