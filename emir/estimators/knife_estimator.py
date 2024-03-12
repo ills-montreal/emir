@@ -14,8 +14,9 @@ logger.setLevel(logging.DEBUG)
 
 @dataclass(frozen=True)
 class KNIFEArgs:
-    batch_size: int = 16
-    lr: float = 0.01
+    batch_size: int = 4096
+    eval_batch_size: int = 4096
+    lr: float = 0.001
     device: str = "cpu"
 
     stopping_criterion: Literal[
@@ -129,20 +130,24 @@ class KNIFEEstimator:
         """
 
         # Create model for MI estimation
-        self.knife = KNIFE(self.args, self.x_dim, self.y_dim).to(self.args.device)
+        self.knife = torch.compile(
+            KNIFE(self.args, self.x_dim, self.y_dim).to(self.args.device)
+        )
 
         # Fit the model
         losses = self.fit_estimator(x, y, record_loss=record_loss)
-        eval_loader = torch.utils.data.DataLoader(
-            torch.utils.data.TensorDataset(x, y), batch_size=eval_batch_size
-        )
+        # eval_loader = torch.utils.data.DataLoader(
+        #     torch.utils.data.TensorDataset(x, y), batch_size=eval_batch_size
+        # )
+
+        eval_loader = FastTensorDataLoader(x, y, batch_size=self.args.batch_size)
 
         mi, h1, h1h2 = [], [], []
         with torch.no_grad():
             for x_batch, y_batch in tqdm(eval_loader, desc="Evaluating", position=-1):
                 with torch.no_grad():
                     mutual_information, marg_ent, cond_ent = self.knife.forward_samples(
-                        x_batch, y_batch
+                        x_batch.to(self.args.device), y_batch.to(self.args.device)
                     )
                     # tolist , extend
                     mi.extend(mutual_information.cpu().tolist())
