@@ -90,6 +90,9 @@ MODELS = [
     "ChemGPT-4.7M",
     "DenoisingPretrainingPQCMv4",
     "FRAD_QM9",
+    "MolR_gat",
+    "MolR_gcn",
+    "MolR_tag",
 ]
 
 

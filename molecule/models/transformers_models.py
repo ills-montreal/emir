@@ -1,5 +1,5 @@
 from transformers import pipeline
-from transformers import AutoTokenizer, AutoModel, AutoModelForMaskedLM, RobertaModel
+from transformers import AutoTokenizer, AutoModel, AutoModelForMaskedLM, RobertaModel, AutoModelForCausalLM
 
 PIPELINE_CORRESPONDANCY = {
     "MolBert": "jonghyunlee/MoleculeBERT_ChEMBL-pretrained",
@@ -25,6 +25,7 @@ def get_hugging_face_model(model_name):
         model = AutoModelForMaskedLM.from_pretrained(model_name)
     elif "ChemGPT" in model_name:
         model = AutoModelForCausalLM.from_pretrained(model_name)
+        tokenizer.pad_token = tokenizer.eos_token
     else:
         model = AutoModel.from_pretrained(model_name)
     return model, tokenizer
