@@ -32,17 +32,9 @@ logger.setLevel(logging.INFO)
 import wandb
 
 
-def get_embedders(args: argparse.Namespace):
-    all_embedders = args.descriptors + args.models
+def get_embedders(all_embedders, feature_extractor):
     MODELS = get_model_path(models=all_embedders)
     embeddings_fn = {}
-
-    feature_extractor = MolecularFeatureExtractor(
-        device=args.device,
-        length=args.fp_length,
-        dataset=args.dataset,
-        mds_dim=args.mds_dim,
-    )
 
     for model_name, model_path in MODELS.items():
         embeddings_fn[model_name] = partial(
@@ -101,9 +93,7 @@ def get_knife_marg_kernel(
     mols: List[dm.Mol] = None,
     args: argparse.Namespace = None,
 ) -> Dict[str, torch.nn.Module]:
-    x = embeddings_fn[emb_key](smiles, mols=mols).to(
-        knife_config.device
-    )
+    x = embeddings_fn[emb_key](smiles, mols=mols).to(knife_config.device)
     if (x == 0).logical_or(x == 1).all():
         x = (x != 0).float()
 
@@ -157,16 +147,16 @@ def model_profile(
         "is_desc_discrete": [],
     }
     model_name, desc = x_y
-    model_embedding = embeddings_fn[model_name](
-        smiles, mols=mols
-    ).to(knife_config.device)
+    model_embedding = embeddings_fn[model_name](smiles, mols=mols).to(
+        knife_config.device
+    )
     df_losses_XY = []
     df_losses_YX = []
 
     mis = []
-    descriptors_embedding = embeddings_fn[desc](
-        smiles, mols=mols
-    ).to(knife_config.device)
+    descriptors_embedding = embeddings_fn[desc](smiles, mols=mols).to(
+        knife_config.device
+    )
 
     for i in range(args.n_runs):
         mi, m, c, loss, marg_ent, cond_ent, kernel_marg = get_knife_preds(
@@ -264,7 +254,17 @@ def compute_all_mi(
     marginal_kernels = {}
 
     knife_config = generate_knife_config_from_args(args)
-    embeddings_fn = get_embedders(args)
+
+    feature_extractor = MolecularFeatureExtractor(
+        device=args.device,
+        length=args.fp_length,
+        dataset=args.dataset,
+        mds_dim=args.mds_dim,
+    )
+
+    embeddings_fn = get_embedders(
+        list(set(args.descriptors + args.models)), feature_extractor
+    )
 
     marginal_fn = partial(
         get_knife_marg_kernel,
