@@ -1,22 +1,24 @@
 import os
 import datamol as dm
 import numpy as np
-from tdc.single_pred import Tox
-from tdc.utils import retrieve_label_name_list
+import pandas as pd
 from tqdm import tqdm
 import argparse
 import json
-from typing import List, Tuple, Optional
 
-from utils import get_molfeat_descriptors, get_molfeat_transformer
-from moleculenet_encoding import mol_to_graph_data_obj_simple
+from utils import MolecularFeatureExtractor
 from precompute_3d import precompute_3d
+from utils.descriptors import DESCRIPTORS, can_be_2d_input
+from utils.molfeat import get_molfeat_transformer
+
+
 from tdc_dataset import get_dataset
 
 parser = argparse.ArgumentParser(
     description="Compute ",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
+
 parser.add_argument(
     "--dataset",
     type=str,
@@ -25,78 +27,85 @@ parser.add_argument(
     help="Dataset to use",
 )
 
-
-DESCRIPTORS = [
-    "usrcat",
-    "electroshape",
-    "usr",
-    "ecfp-count",
-    "ecfp",
-    "estate",
-    "erg",
-    "rdkit",
-    "topological",
-    "avalon",
-    "maccs",
-    "atompair-count",
-    "topological-count",
-    "fcfp-count",
-    "secfp",
-    "pattern",
-    "fcfp",
-    "scaffoldkeys",
-    "mordred",
-    "cats",
-    "default",
-    "gobbi",
-    "pmapper",
-    "cats/3D",
-    "gobbi/3D",
-    "pmapper/3D",
-]
+parser.add_argument(
+    "--descriptors",
+    type=str,
+    nargs="+",
+    default=DESCRIPTORS,
+    required=False,
+    help="List of descriptors to compute",
+)
 
 
 def main():
-    dict_smiles_desc = {}
-
     args = parser.parse_args()
-    df = get_dataset(args.dataset)
+    if not os.path.exists(f"data/{args.dataset}/preprocessed.sdf"):
+        if os.path.exists(f"data/{args.dataset}_3d.sdf"):
+            print(f"Loading 3D conformers from data/{args.dataset}_3d.sdf")
+            mols, smiles = precompute_3d(None, args.dataset)
+        else:
+            df = get_dataset(args.dataset)
+            if "Drug" in df.columns:
+                smiles = df["Drug"].tolist()
+            else:
+                smiles = df["smiles"].tolist()
+            mols = None
+            mols, smiles = precompute_3d(smiles, args.dataset)
+        # Removing molecules that cannot be featurized
+        for t_name in ["usr", "electroshape", "usrcat"]:
+            transformer, thrD = get_molfeat_transformer(t_name)
+            feat, valid_id = transformer(mols, ignore_errors=True)
+            smiles = np.array(smiles)[valid_id]
+            mols = np.array(mols)[valid_id]
 
-    smiles = df["Drug"].tolist()
-    mols = None
+        valid_smiles = []
+        valid_mols = []
+        for i, s in enumerate(tqdm(smiles, desc="Generating graphs")):
+            if can_be_2d_input(s, mols[i]):
+                valid_smiles.append(s)
+                valid_mols.append(mols[i])
 
-    mols, smiles = precompute_3d(smiles, args.dataset)
-    # Removing molecules that cannot be featurized
-    for t_name in ["usr", "electroshape", "usrcat"]:
-        transformer, thrD = get_molfeat_transformer(t_name)
-        feat, valid_id = transformer(mols, ignore_errors=True)
-        smiles = np.array(smiles)[valid_id]
-        mols = np.array(mols)[valid_id]
+        smiles = valid_smiles
+        mols = valid_mols
+        if not os.path.exists(f"data/{args.dataset}"):
+            os.makedirs(f"data/{args.dataset}")
 
-    graph_input = []
-    valid_smiles = []
-    valid_mols = []
-    for i, s in enumerate(tqdm(smiles, desc="Generating graphs")):
-        try:
-            graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s)))
-            valid_smiles.append(s)
-            valid_mols.append(mols[i])
-        except:
-            pass
-    smiles = valid_smiles
-    mols = valid_mols
+        pre_processed = pd.DataFrame({"smiles": smiles, "mols": mols})
+        dm.to_sdf(
+            pre_processed, f"data/{args.dataset}/preprocessed.sdf", mol_column="mols"
+        )
+        # save the SMILES in a json file
+        with open(f"data/{args.dataset}/smiles.json", "w") as f:
+            json.dump(smiles, f)
 
-    for desc in tqdm(DESCRIPTORS):
-        dict_smiles_desc[desc] = {}
-        for length in [256, 512, 1024, 2048]:
-            dict_smiles_desc[desc][length] = get_molfeat_descriptors(
-                None, smiles, desc, mols=mols, length=length
-            ).tolist()
+    else:
+        pre_processed = dm.read_sdf(
+            f"data/{args.dataset}/preprocessed.sdf", as_df=True, mol_column="mols"
+        )
+        smiles = pre_processed["smiles"].iloc[:, 0].tolist()
+        mols = pre_processed["mols"].tolist()
 
-    with open(f"data/{args.dataset}_molfeat.json", "w") as f:
-        json.dump(dict_smiles_desc, f)
-    return dict_smiles_desc
+    for desc in tqdm(args.descriptors, position=0, desc="Descriptors"):
+        for length in tqdm([1024, 2048], desc="Length", position=1, leave=False):
+            feature_extractor = MolecularFeatureExtractor(
+                device="cpu",
+                length=length,
+                dataset=args.dataset,
+                mds_dim=0,
+            )
+            if not os.path.exists(f"data/{args.dataset}/{desc}_{length}.npy"):
+                descriptor = feature_extractor.get_features(
+                    smiles, name=desc, mols=mols, feature_type="descriptor"
+                ).numpy()
+
+                np.save(
+                    f"data/{args.dataset}/{desc.replace('/','_')}_{length}.npy",
+                    descriptor,
+                )
+                del descriptor
+            else:
+                print(f"data/{args.dataset}/{desc}_{length}.npy already exists")
 
 
 if __name__ == "__main__":
-    dict_smiles_desc = main()
+    main()

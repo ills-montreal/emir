@@ -1,4 +1,5 @@
-from typing import List, Union, Optional, Tuple, Dict, Any
+import os
+from typing import List, Union, Optional
 import numpy as np
 from tqdm import tqdm
 
@@ -6,23 +7,11 @@ import datamol as dm
 from molfeat.trans.fp import FPVecTransformer
 from molfeat.trans import MoleculeTransformer
 from molfeat.calc.pharmacophore import Pharmacophore2D, Pharmacophore3D
-import torch_geometric.nn.pool as tgp
 from torch_geometric.data import DataLoader
-
 
 import torch
 
-from models.moleculenet_models import GNN, GNN_graphpred
-from moleculenet_encoding import mol_to_graph_data_obj_simple
-from models.transformers_models import get_hugging_face_model
 
-MODEL_PARAMS = {
-    "num_layer": 5,
-    "emb_dim": 300,
-    "JK": "last",
-    "drop_ratio": 0.5,
-    "gnn_type": "gin",
-}
 
 threeD_method_fpvec = ["usrcat", "electroshape", "usr"]
 fpvec_method = [
@@ -39,61 +28,10 @@ fpvec_method = [
     "fcfp-count",
     "secfp",
     "pattern",
-    "fcfp"
+    "fcfp",
 ]
-moleculetransf_method = [
-    "scaffoldkeys",
-    "mordred"
-]
+moleculetransf_method = ["scaffoldkeys", "mordred"]
 pharmac_method = ["cats", "default", "gobbi", "pmapper"]
-
-
-@torch.no_grad()
-def get_embeddings_from_model_moleculenet(
-    dataloader: DataLoader,
-    smiles: List[str],
-    mols: Optional[List[dm.Mol]] = None,
-    path: str = "backbone_pretrained_models/GROVER/grover.pth",
-    pooling_method=tgp.global_mean_pool,
-    normalize: bool = False,
-):
-    embeddings = []
-    molecule_model = GNN(**MODEL_PARAMS)
-    if not path == "":
-        molecule_model.load_state_dict(torch.load(path))
-    for b in dataloader:
-        embeddings.append(
-            torch.nn.functional.normalize(
-                pooling_method(molecule_model(b.x, b.edge_index, b.edge_attr), b.batch),
-                dim=1,
-            )
-        )
-    embeddings = torch.cat(embeddings, dim=0)
-    return embeddings
-
-
-def get_embeddings_from_transformers(
-    dataloader: DataLoader,
-    smiles: List[str],
-    mols: Optional[List[dm.Mol]] = None,
-    transformer_name: str = "graphormer",
-    normalize: bool = False,
-):
-    model, token = get_hugging_face_model(transformer_name)
-    if token == None:
-        embeddings = torch.tensor(model(smiles))
-    else:
-        input_tok = token(
-            smiles, padding=True, truncation=True, return_tensors="pt", max_length=128
-        )
-        embeddings = torch.tensor(
-            model(
-                input_tok["input_ids"],
-                input_tok["attention_mask"],
-                input_tok["token_type_ids"],
-            )
-        )
-    return embeddings
 
 
 def get_molfeat_transformer(transformer_name: str, length: int = 1024):
@@ -127,7 +65,7 @@ def get_molfeat_transformer(transformer_name: str, length: int = 1024):
             False,
         )
     elif (
-        transformer_name.endswith("/3D")
+        transformer_name.endswith("3D")
         and transformer_name[:-3] in pharmac_method
         and not transformer_name[:-3] == "default"
     ):
@@ -145,7 +83,6 @@ def get_molfeat_transformer(transformer_name: str, length: int = 1024):
 
 
 def physchem_descriptors(
-    dataloader: DataLoader,
     smiles: List[str],
     mols: Optional[List[dm.Mol]] = None,
     length: int = 1024,
@@ -161,25 +98,23 @@ def physchem_descriptors(
 
 
 def get_molfeat_descriptors(
-    dataloader: DataLoader,
     smiles: List[str],
     transformer_name: str,
     mols: Optional[List[dm.Mol]] = None,
-    normalize: bool = False,
+    dataset: str = "freesolv",
     length: int = 1024,
 ):
     """
     Returns a list of descriptors for a given smiles string, obtained by using Molfeat's FPVecTransformer.
     """
-
     if transformer_name == "physchem":
         molecular_embeddings = physchem_descriptors(
-            dataloader, smiles, mols=mols, length=length
+            smiles, mols=mols, length=length
         )
     else:
         transformer, threeD = get_molfeat_transformer(transformer_name, length=length)
 
-        if threeD and mols is None:
+        if threeD and (mols is None or mols == []):
             mols = [
                 dm.conformers.generate(dm.to_mol(s), align_conformers=True, n_confs=5)
                 for s in tqdm(smiles, desc="Generating conformers")
@@ -188,8 +123,4 @@ def get_molfeat_descriptors(
             molecular_embeddings = torch.tensor(transformer(mols, progress=True))
         else:
             molecular_embeddings = torch.tensor(transformer(smiles, progress=True))
-    if normalize:
-        molecular_embeddings = torch.nn.functional.normalize(
-            molecular_embeddings, dim=1
-        )
     return molecular_embeddings
