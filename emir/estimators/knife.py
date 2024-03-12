@@ -42,6 +42,12 @@ class KNIFE(nn.Module):
         marg_ent, cond_ent = self.run_kernels(z_c, z_d)
         return marg_ent - cond_ent, marg_ent, cond_ent
 
+    def forward_samples(self, z_c, z_d):  # samples have shape [sample_size, dim]
+        marg_ent = -self.kernel_marg.logpdf(z_d)
+        cond_ent = -self.kernel_cond.logpdf(z_c, z_d)
+
+        return marg_ent - cond_ent, marg_ent, cond_ent
+
     def learning_loss(self, z_c, z_d):
         marg_ent, cond_ent = self.run_kernels(z_c, z_d)
         return marg_ent + cond_ent
