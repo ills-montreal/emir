@@ -31,8 +31,10 @@ def get_embeddings_from_model_moleculenet(
     transformer_name: str = "",
     device: str = "cpu",
     batch_size: int = 2048,
-    graph_input_path: Optional[str] = None,
+    dataset: Optional[str] = None,
+    **kwargs,
 ):
+    graph_input_path = f"data/{dataset}/graph_input" if dataset is not None else None
     embeddings = []
     molecule_model = GNN(**MODEL_PARAMS).to(device)
     if not path == "":
@@ -44,7 +46,9 @@ def get_embeddings_from_model_moleculenet(
         graph_input = []
         for s in tqdm(smiles, desc="Converting smiles to graph data object"):
             try:
-                graph_input.append(mol_to_graph_data_obj_simple(dm.to_mol(s), smiles=s).to(device))
+                graph_input.append(
+                    mol_to_graph_data_obj_simple(dm.to_mol(s), smiles=s).to(device)
+                )
             except Exception as e:
                 print(f"Failed to convert {s} to graph data object.")
                 raise e

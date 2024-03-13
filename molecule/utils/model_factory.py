@@ -31,6 +31,11 @@ class ModelFactory:
 
             return get_embeddings_from_molr
 
+        elif name.startswith("MoleOOD"):
+            from .moleood import get_embeddings_from_moleood
+
+            return get_embeddings_from_moleood
+
         else:
             from .transformers import get_embeddings_from_transformers
 
