@@ -127,7 +127,7 @@ class MolecularFeatureExtractor:
                     path=path,
                     transformer_name=name,
                     device=device,
-                    graph_input_path=f"data/{dataset}/graph_dataset",
+                    dataset=dataset,
                 )
                 np.save(f"data/{dataset}/{name}.npy", molecular_embedding.cpu().numpy())
 

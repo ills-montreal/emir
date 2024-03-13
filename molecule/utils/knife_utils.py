@@ -49,6 +49,7 @@ def get_embedders(all_embedders, feature_extractor):
             model_name in PIPELINE_CORRESPONDANCY.keys()
             or model_name in name2path
             or model_name.startswith("MolR")
+            or model_name.startswith("MoleOOD")
         ):
             embeddings_fn[model_name] = partial(
                 feature_extractor.get_features,
