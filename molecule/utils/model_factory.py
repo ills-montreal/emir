@@ -36,6 +36,12 @@ class ModelFactory:
 
             return get_embeddings_from_moleood
 
+        elif name == "ThreeDInfomax":
+            from .threedinfomax import get_embeddings_from_model_threedinfomax
+
+            return get_embeddings_from_model_threedinfomax
+
+
         else:
             from .transformers import get_embeddings_from_transformers
 

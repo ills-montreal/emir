@@ -50,6 +50,7 @@ def get_embedders(all_embedders, feature_extractor):
             or model_name in name2path
             or model_name.startswith("MolR")
             or model_name.startswith("MoleOOD")
+            or model_name.startswith("ThreeDInfomax")
         ):
             embeddings_fn[model_name] = partial(
                 feature_extractor.get_features,
