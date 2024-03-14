@@ -46,6 +46,12 @@ class KNIFE(nn.Module):
         marg_ent, cond_ent = self.run_kernels(z_c, z_d)
         return marg_ent + cond_ent
 
+    def pmi(self, z_c, z_d):
+        marg_ent = -self.kernel_marg.logpdf(z_d)
+        cond_ent = -self.kernel_cond.logpdf(z_c, z_d)
+
+        return marg_ent - cond_ent
+
     def I(self, *args, **kwargs):
         return self.forward(*args[:2], **kwargs)[0]
 
