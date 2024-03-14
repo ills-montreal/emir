@@ -1,4 +1,3 @@
-import logging
 import argparse
 from pathlib import Path
 from typing import Tuple
@@ -8,8 +7,6 @@ import torch
 from sentence_transformers import SentenceTransformer
 
 from emir.estimators import KNIFEEstimator, KNIFEArgs
-
-from sys import stdout
 
 
 # logging.basicConfig(stream=stdout, level=logging.)
@@ -54,7 +51,7 @@ def parse_summaries(path: Path):
     """
     # read csv file
 
-    df = pd.read_csv(path, sep=";")
+    df = pd.read_csv(path, sep=";").dropna()
 
     # check if the csv file has the correct columns
     if not all([col in df.columns for col in ["text", "summary"]]):
@@ -71,6 +68,7 @@ def embedd_sourcetexts_and_summaries(df, model) -> Tuple[torch.Tensor, torch.Ten
     """
 
     # embedd the text and the summary
+
     text_embeddings = model.encode(df.text.tolist(), convert_to_tensor=True)
     summary_embeddings = model.encode(df.summary.tolist(), convert_to_tensor=True)
 
@@ -79,7 +77,7 @@ def embedd_sourcetexts_and_summaries(df, model) -> Tuple[torch.Tensor, torch.Ten
 
 def compute_mi(
     text_embeddings, summary_embeddings, device, args
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> Tuple[float, float, float]:
     """
     :param text_embeddings: a torch tensor of text embeddings
     :param summary_embeddings: a torch tensor of summary embeddings
@@ -112,6 +110,11 @@ def compute_mi(
 def main():
     args = parse_args()
 
+    # check if the file exists already
+    # if it does stop the execution
+    path = Path(args.output) / f"{args.summaries.stem}_metrics.csv"
+    if path.exists():
+        raise ValueError("The file already exists.")
     # load the model
     model = SentenceTransformer(args.model)
 
@@ -137,6 +140,7 @@ def main():
 
     # make a pandas dataframe, use summaries filename as index
 
+
     df = pd.DataFrame(
         {
             "filename" : [args.summaries.stem],
@@ -151,7 +155,7 @@ def main():
             "H(summary|text)": [cond_ent],
             "I(summary -> text)": [mi_rev],
             "H(text)": [marg_ent_rev],
-            "H(test|summary)": [cond_ent_rev],
+            "H(text|summary)": [cond_ent_rev],
         },
     )
 
@@ -159,9 +163,15 @@ def main():
 
     # save the dataframe
 
-    path = Path(args.output) / f"{args.summaries.stem}_metrics.csv"
     # create the output directory if it does not exist
     path.parent.mkdir(parents=True, exist_ok=True)
+
+    if path.exists():
+        df_old = pd.read_csv(path, index_col=0)
+
+        # concat only the new columns
+        df = pd.concat([df_old, df[df.columns.difference(df_old.columns)]], axis=1)
+
     df.to_csv(path)
 
 

@@ -26,8 +26,12 @@ def parse_args():
         default="mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis",
     )
     parser.add_argument("--summaries", type=Path, default="")
+    # evaluate gold summaries
+    parser.add_argument("--gold", default=False, action="store_true")
+    parser.add_argument("--select", type=str, default="*")
+
     parser.add_argument("--output", type=str)
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--device", type=str, default="cuda")
 
 
@@ -45,7 +49,7 @@ def parse_summaries(path: Path):
     """
     # read csv file
 
-    df = pd.read_csv(path, sep=";")
+    df = pd.read_csv(path, sep=";").dropna()
 
     # check if the csv file has the correct columns
     if not all([col in df.columns for col in ["text", "summary"]]):
@@ -54,10 +58,15 @@ def parse_summaries(path: Path):
     return df
 
 
-def evaluate_classification_task(model, tokenizer, df, batch_size):
+def evaluate_classification_task(model, tokenizer, df, batch_size, gold=False):
     # make a list of the tuples (text, summary)
-    texts = df.text.tolist()
-    summaries = df.summary.tolist()
+
+    if gold:
+        texts = df.text.tolist()
+        summaries = df.gold_summary.tolist()
+    else:
+        texts = df.text.tolist()
+        summaries = df.summary.tolist()
 
     ds = list(zip(texts, summaries))
 
@@ -125,21 +134,35 @@ def evaluate_classification_task(model, tokenizer, df, batch_size):
 def main():
     args = parse_args()
 
+    path = Path(args.output) / f"{args.summaries.stem}_metrics.csv"
+    if args.select != "*":
+        if args.select not in path.name:
+            return
+
     # load the model
-    model = AutoModelForSequenceClassification.from_pretrained(args.model)
+    if args.model =="jonaskoenig/topic_classification_04":
+        model = AutoModelForSequenceClassification.from_pretrained(args.model, from_tf=True)
+    else:
+        model = AutoModelForSequenceClassification.from_pretrained(args.model)
     model.to(args.device)
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    if args.model == "manifesto-project/manifestoberta-xlm-roberta-56policy-topics-context-2023-1-1":
+        tokenizer = AutoTokenizer.from_pretrained("xlm-roberta-large")
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
 
     df = parse_summaries(args.summaries)
 
-    metrics = evaluate_classification_task(model, tokenizer, df, args.batch_size)
+    metrics = evaluate_classification_task(model, tokenizer, df, args.batch_size, args.gold)
 
     # make a dataframe with the metric
     df = pd.DataFrame(metrics, index=[args.summaries.stem])
 
     # Add the model name in the metrics names
-    df = df.add_prefix(f"{sanitize_model_name(args.model)}/")
+    if args.gold:
+        df = df.add_prefix(f"{sanitize_model_name(args.model)}/gold/")
+    else:
+        df = df.add_prefix(f"{sanitize_model_name(args.model)}/")
 
     # save the dataframe
 
@@ -148,11 +171,20 @@ def main():
     path.parent.mkdir(parents=True, exist_ok=True)
 
     # check if exists already, if it does load it and add the new columns
+
     if path.exists():
         df_old = pd.read_csv(path, index_col=0)
 
-        # add the new columns
-        df = pd.concat([df_old, df], axis=1)
+        # create the colums if they do not exist
+        for col in df.columns:
+            if col not in df_old.columns:
+                df_old[col] = float("nan")
+
+        # add entry to the dataframe
+        for col in df.columns:
+            df_old.loc[args.summaries.stem, col] = df.loc[args.summaries.stem, col]
+
+        df = df_old
 
 
     df.to_csv(path)
