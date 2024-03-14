@@ -119,6 +119,7 @@ class MolecularFeatureExtractor:
                 molecular_embedding = torch.tensor(
                     np.load(f"data/{dataset}/{name}.npy"), device=device
                 )
+                print(f"Loaded {name}.npy")
             else:
                 molecular_embedding = ModelFactory(name)(
                     smiles,
@@ -126,7 +127,7 @@ class MolecularFeatureExtractor:
                     path=path,
                     transformer_name=name,
                     device=device,
-                    graph_input_path=f"data/{dataset}/graph_dataset",
+                    dataset=dataset,
                 )
                 np.save(f"data/{dataset}/{name}.npy", molecular_embedding.cpu().numpy())
 

@@ -19,12 +19,28 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         default=[
-            "ecfp",
-            "secfp",
-            "cats",
-            "pmapper",
-            "cats/3D",
-            "pmapper/3D",
+            "ContextPred",
+            "GPT-GNN",
+            "GraphMVP",
+            "GROVER",
+            # "EdgePred", # This model is especially bad and makes visualization hard
+            "AttributeMask",
+            "GraphLog",
+            "GraphCL",
+            "InfoGraph",
+            "Not-trained",
+            "MolBert",
+            "ChemBertMLM-5M",
+            "ChemBertMLM-10M",
+            "ChemBertMLM-77M",
+            "ChemBertMTR-5M",
+            "ChemBertMTR-10M",
+            "ChemBertMTR-77M",
+            "ChemGPT-1.2B",
+            "ChemGPT-19M",
+            "ChemGPT-4.7M",
+            "DenoisingPretrainingPQCMv4",
+            "FRAD_QM9",
         ],
         help="List of models to compare",
     )
@@ -41,12 +57,35 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         default=[
-            "ecfp",
-            "secfp",
-            "cats",
-            "pmapper",
-            "cats/3D",
-            "pmapper/3D",
+            "ContextPred",
+            "GPT-GNN",
+            "GraphMVP",
+            "GROVER",
+            # "EdgePred", # This model is especially bad and makes visualization hard
+            "AttributeMask",
+            "GraphLog",
+            "GraphCL",
+            "InfoGraph",
+            "Not-trained",
+            "MolBert",
+            "ChemBertMLM-5M",
+            "ChemBertMLM-10M",
+            "ChemBertMLM-77M",
+            "ChemBertMTR-5M",
+            "ChemBertMTR-10M",
+            "ChemBertMTR-77M",
+            "ChemGPT-1.2B",
+            "ChemGPT-19M",
+            "ChemGPT-4.7M",
+            "DenoisingPretrainingPQCMv4",
+            "FRAD_QM9",
+            "MolR_gat",
+            "MolR_gcn",
+            "MolR_tag",
+            "MoleOOD_OGB_GIN"
+            "MoleOOD_OGB_GCN",
+            "MoleOOD_OGB_SAGE",
+            "ThreeDInfoMax"
         ],
         help="List of descriptors to compare",
     )
@@ -77,14 +116,14 @@ def add_knife_args(parser: argparse.ArgumentParser):
     :param parser:
     :return:
     """
-    parser.add_argument("--cond-modes", type=int, default=3)
-    parser.add_argument("--marg-modes", type=int, default=3)
+    parser.add_argument("--cond-modes", type=int, default=6)
+    parser.add_argument("--marg-modes", type=int, default=6)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch-size", type=int, default=8192)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--n-epochs", type=int, default=10)
     parser.add_argument("--n-epochs-marg", type=int, default=10)
-    parser.add_argument("--ff-layers", type=int, default=3)
+    parser.add_argument("--ff-layers", type=int, default=2)
     parser.add_argument("--cov-diagonal", type=str, default="var")
     parser.add_argument("--cov-off-diagonal", type=str, default="")
     parser.add_argument("--optimize-mu", type=str, default="true")
@@ -133,16 +172,15 @@ def add_FF_downstream_args(parser: argparse.ArgumentParser):
     :param parser:
     :return:
     """
-    parser.add_argument("--hidden-dim", type=int, default=16)
-    parser.add_argument("--n-layers", type=int, default=0)
+    parser.add_argument("--hidden-dim", type=int, default=32)
+    parser.add_argument("--n-layers", type=int, default=1)
     parser.add_argument("--d-rate", type=float, default=0.0)
-    parser.add_argument("--norm", type=str, default="batch")
+    parser.add_argument("--norm", type=str, default="layer")
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--n-epochs", type=int, default=100)
 
     return parser
-
 
 
 

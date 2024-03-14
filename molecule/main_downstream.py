@@ -85,6 +85,18 @@ MODELS = [
     "ChemBertMTR-5M",
     "ChemBertMTR-10M",
     "ChemBertMTR-77M",
+    #"ChemGPT-1.2B",
+    "ChemGPT-19M",
+    "ChemGPT-4.7M",
+    "DenoisingPretrainingPQCMv4",
+    "FRAD_QM9",
+    "MolR_gat",
+    "MolR_gcn",
+    "MolR_tag",
+    "MoleOOD_OGB_GIN",
+    "MoleOOD_OGB_GCN",
+    "MoleOOD_OGB_SAGE",
+    "ThreeDInfomax",
 ]
 
 
@@ -243,7 +255,8 @@ def main(args):
     )
     df = df[["epoch", "embedder", "dataset", "length"]].join(
         best_epoch.set_index(["epoch", "embedder", "dataset", "length"]),
-        on=["epoch", "embedder", "dataset", "length"], how="inner",
+        on=["epoch", "embedder", "dataset", "length"],
+        how="inner",
     )
 
     wandb.log({"mean_roc": df.groupby("embedder")["roc"].mean().mean()})
@@ -265,9 +278,6 @@ if __name__ == "__main__":
     parser = add_FF_downstream_args(parser)
 
     args = parser.parse_args()
-
-
-
 
     if args.embedders is None:
         args.embedders = MODELS  # + DESCRIPTORS
