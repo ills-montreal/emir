@@ -1,0 +1,4 @@
+# continue training from checkpoint:
+checkpoint: runs/OptimalTransportModel_file_loader_drugs_GeomolGNNOGBFeat_10000_hidden50_depth3_2Start_layers_123_24-08_16-46-47/last_checkpoint.pt
+
+patience: 1

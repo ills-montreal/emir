@@ -1,0 +1,4 @@
+# continue training from checkpoint:
+checkpoint: runs/PNA_qm9_r2_baseline_100k_123_16-11_15-47-27/last_checkpoint.pt
+
+patience: 1

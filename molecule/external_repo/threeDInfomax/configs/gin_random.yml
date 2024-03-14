@@ -1,0 +1,53 @@
+experiment_name: 'baseline'
+
+dataset: 'ogbg-molbace'
+num_epochs: 1000
+batch_size: 32
+log_iterations: 30
+patience: 40
+minimum_epochs: 120
+loss_func: BCEWithLogitsLoss
+required_data:
+  - dgl_graph
+  - targets
+metrics:
+  - rsquared
+  - mean_predictor_loss
+  - pearsonr
+
+
+optimizer: Adam
+optimizer_params:
+  lr: 1.0e-3
+
+scheduler_step_per_batch: False
+lr_scheduler: WarmUpWrapper
+lr_scheduler_params:
+  warmup_steps: [700,700,350]
+  interpolation: 'linear'
+  # parameters of scheduler to run after warmup
+  wrapped_scheduler: ReduceLROnPlateau
+  factor: 0.5
+  patience: 25
+  min_lr: 1.0e-6
+  mode: 'min'
+  verbose: True
+
+
+
+# Model parameters
+model_type: 'OGBGNNRandom'
+model_parameters:
+  target_dim: 1
+  num_layers: 5
+  dropout: 0.5
+  hidden_dim: 300
+  random_vec_dim: 10
+  random_vec_std: 1.0
+  virtual_node: True
+
+
+
+
+# continue training from checkpoint:
+#checkpoint: runs/PNAReadout_2_layer_03-04_15-29-07/last_checkpoint.pt

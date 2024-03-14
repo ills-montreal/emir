@@ -1,0 +1,62 @@
+experiment_name: 'tune'
+
+pretrain_checkpoint: runs2/geomol_drugs/best_model.pt
+transfer_layers:
+  - gnn.
+exclude_from_transfer:
+  - batch_norm
+
+dataset: qm9_geomol
+num_epochs: 1000
+batch_size: 128
+
+log_iterations: 30
+patience: 30
+loss_func: L1Loss
+num_train: 50000
+targets:
+  - homo
+
+required_data:
+  - pytorch_geometric_graph
+  - targets
+metrics:
+  - mae_denormalized
+  - pearsonr
+  - rsquared
+  - qm9_properties
+collate_function: pytorch_geometric_collate
+
+optimizer: Adam
+optimizer_params:
+  lr: 7.0e-5
+
+
+scheduler_step_per_batch: False
+lr_scheduler: WarmUpWrapper
+lr_scheduler_params:
+  warmup_steps: [700,700,390]
+  interpolation: 'linear'
+  # parameters of scheduler to run after warmup
+  wrapped_scheduler: ReduceLROnPlateau
+  factor: 0.5
+  patience: 25
+  min_lr: 1.0e-6
+  mode: 'min'
+  verbose: True
+
+
+
+# Model parameters
+model_type: 'GeomolGNNWrapper'
+model_parameters:
+  hidden_dim: 50
+  readout_layers: 2
+  readout_batchnorm: True
+  depth: 3
+  n_layers: 2
+
+
+
+# continue training from checkpoint:
+#checkpoint: runs/PNAReadout_2_layer_03-04_15-29-07/last_checkpoint.pt

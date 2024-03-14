@@ -1,0 +1,54 @@
+experiment_name: 'baseline'
+
+multithreaded_seeds:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+dataset: 'ogbg-moltox21'
+num_epochs: 1000
+batch_size: 32
+log_iterations: 30
+patience: 40
+minimum_epochs: 120
+loss_func: OGBNanLabelBCEWithLogitsLoss
+required_data:
+  - dgl_graph
+  - targets
+metrics:
+  - rsquared
+  - mean_predictor_loss
+  - pearsonr
+
+
+optimizer: Adam
+optimizer_params:
+  lr: 1.0e-3
+
+scheduler_step_per_batch: False
+lr_scheduler: ReduceLROnPlateau
+lr_scheduler_params:
+  factor: 0.5
+  patience: 25
+  min_lr: 1.0e-6
+  mode: 'max'
+  verbose: True
+
+
+
+# Model parameters
+model_type: 'OGBGNN'
+model_parameters:
+  target_dim: 12
+  num_layers: 5
+  dropout: 0.5
+  hidden_dim: 300
+  virtual_node: False
+
+
+
+
+# continue training from checkpoint:
+#checkpoint: runs/PNAReadout_2_layer_03-04_15-29-07/last_checkpoint.pt
