@@ -5,7 +5,7 @@ from molecule.external_repo.Frad.torchmdnet_frad.models.model import load_model 
 
 
 name2path = {
-    "DenoisingPretrainingPQCMv4": ("external_repo/pre-training-via-denoising/checkpoints/denoised-pcqm4mv2.ckpt", "torchmdnet"),
+    "DenoisingPretrainingPQCMv4": ("backbone_pretrained_models/pre-training-via-denoising/denoised-pcqm4mv2.ckpt", "torchmdnet"),
     "FRAD_QM9": ("backbone_pretrained_models/FRAD/frad.ckpt", "frad"),
 }
 
