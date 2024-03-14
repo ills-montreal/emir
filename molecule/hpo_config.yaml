@@ -18,7 +18,7 @@ parameters:
     values: [128]
   datasets:
     values: [
-        "hERG"
+        "DILI"
       ]
 
 command:

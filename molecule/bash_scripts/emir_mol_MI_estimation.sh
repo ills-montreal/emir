@@ -21,7 +21,10 @@ module load python/3.10
 module load scipy-stack
 source /home/fransou/EMIR/bin/activate
 
-cd emir/molecule
+cd emir
+
+
+cd molecule
 cp -r /home/fransou/scratch/DATA/EMIR/data/$DATASET data
 cp -r /home/fransou/scratch/DATA/EMIR/backbone_pretrained_models ./
 

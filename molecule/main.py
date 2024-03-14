@@ -1,4 +1,8 @@
 import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
 import logging
 
 import argparse
@@ -14,6 +18,8 @@ from molecule.parser_mol import (
     add_eval_cli_args,
     add_knife_args,
 )
+
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
