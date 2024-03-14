@@ -1,0 +1,4 @@
+# continue training from checkpoint:
+checkpoint: runs/SMP_qm9_r2_randFeat_123_19-11_16-56-50/last_checkpoint.pt
+
+patience: 1

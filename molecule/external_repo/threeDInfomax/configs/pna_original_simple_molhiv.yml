@@ -1,0 +1,62 @@
+experiment_name: 'baseline'
+
+dataset: 'molhiv'
+num_epochs: 1000
+batch_size: 128
+log_iterations: 30
+patience: 30
+loss_func: BCEWithLogitsLoss
+required_data:
+  - dgl_graph
+  - targets
+metrics:
+  - ogbg-molhiv
+  - rsquared
+  - mean_predictor_loss
+main_metric: ogb_molhiv
+main_metric_goal: max
+
+optimizer: Adam
+optimizer_params:
+  lr: 1.0e-4
+
+scheduler_step_per_batch: False
+lr_scheduler: ReduceLROnPlateau
+lr_scheduler_params:
+  factor: 0.5
+  patience: 25
+  min_lr: 5.0e-6
+  mode: 'min'
+  verbose: True
+
+model_type: 'PNAOriginalSimple'
+model_parameters:
+  target_dim: 1
+  hidden_dim: 70
+  mid_batch_norm: True
+  last_batch_norm: True
+  readout_batchnorm: True
+  readout_hidden_dim: 70
+  readout_layers: 2
+  dropout: 0.3
+  in_feat_dropout: 0.0
+  last_layer_dim: 70
+  propagation_depth: 4
+  aggregators:
+    - mean
+    - max
+    - min
+    - std
+  scalers:
+    - identity
+    - amplification
+    - attenuation
+  readout_aggregators:
+    - mean
+  pretrans_layers: 1
+  posttrans_layers: 1
+  residual: True
+
+
+# continue training from checkpoint:
+#checkpoint: runs/PNAReadout_2_layer_03-04_15-29-07/last_checkpoint.pt

@@ -1,0 +1,60 @@
+experiment_name: 'tune_DistancePredictor_qm9'
+
+multithreaded_seeds:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+pretrain_checkpoint: runs/DistancePredictor_qm9__123_11-11_16-32-46/best_checkpoint.pt
+transfer_layers:
+  - gnn.
+
+
+dataset: 'ogbg-molhiv'
+num_epochs: 1000
+batch_size: 128
+log_iterations: 30
+patience: 40
+minimum_epochs: 30
+loss_func: BCEWithLogitsLoss
+required_data:
+  - dgl_graph
+  - targets
+metrics:
+  - rsquared
+  - mean_predictor_loss
+  - pearsonr
+
+
+optimizer: Adam
+optimizer_params:
+  lr: 1.0e-3
+
+scheduler_step_per_batch: False
+lr_scheduler: ReduceLROnPlateau
+lr_scheduler_params:
+  factor: 0.5
+  patience: 25
+  min_lr: 1.0e-6
+  mode: 'max'
+  verbose: True
+
+
+
+# Model parameters
+model_type: 'OGBGNN'
+model_parameters:
+  target_dim: 1
+  num_layers: 5
+  dropout: 0.0
+  batch_norm_momentum: 0.1
+  emb_dim: 300
+  virtual_node: False
+
+
+
+
+# continue training from checkpoint:
+#checkpoint: runs/PNAReadout_2_layer_03-04_15-29-07/last_checkpoint.pt
