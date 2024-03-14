@@ -85,7 +85,7 @@ MODELS = [
     "ChemBertMTR-5M",
     "ChemBertMTR-10M",
     "ChemBertMTR-77M",
-    "ChemGPT-1.2B",
+    #"ChemGPT-1.2B",
     "ChemGPT-19M",
     "ChemGPT-4.7M",
     "DenoisingPretrainingPQCMv4",
@@ -96,7 +96,7 @@ MODELS = [
     "MoleOOD_OGB_GIN",
     "MoleOOD_OGB_GCN",
     "MoleOOD_OGB_SAGE",
-    "ThreeDInfoMax",
+    "ThreeDInfomax",
 ]
 
 
