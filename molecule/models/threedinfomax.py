@@ -103,7 +103,7 @@ class ThreeDInfoMax(nn.Module):
         self.generate_config(path)
 
         model = load_model(self.config, data=test_data, device=device)
-        self.model = model.eval()
+        self.model = model.eval().to(device)
         self.test_loader = DataLoader(
             test_data, batch_size=batch_size, collate_fn=graph_only_collate
         )
