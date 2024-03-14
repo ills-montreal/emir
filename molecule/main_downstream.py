@@ -93,6 +93,10 @@ MODELS = [
     "MolR_gat",
     "MolR_gcn",
     "MolR_tag",
+    "MoleOOD_OGB_GIN",
+    "MoleOOD_OGB_GCN",
+    "MoleOOD_OGB_SAGE",
+    "ThreeDInfoMax",
 ]
 
 

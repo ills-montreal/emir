@@ -85,6 +85,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "MoleOOD_OGB_GIN"
             "MoleOOD_OGB_GCN",
             "MoleOOD_OGB_SAGE",
+            "ThreeDInfoMax"
         ],
         help="List of descriptors to compare",
     )

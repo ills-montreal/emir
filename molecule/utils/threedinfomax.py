@@ -1,4 +1,6 @@
-from molecule.models.threedinfomax import ThreeDInfomax
+from typing import List
+
+from molecule.models.threedinfomax import ThreeDInfoMax
 
 
 def get_embeddings_from_model_threedinfomax(
@@ -8,6 +10,6 @@ def get_embeddings_from_model_threedinfomax(
     device: str = "cpu",
     **kwargs,
 ):
-    model = ThreeDInfomax(smiles, device=device, batch_size=batch_size)
-    embeddings = model.featurize_data(smiles)
+    model = ThreeDInfoMax(smiles, device=device, batch_size=batch_size)
+    embeddings = model.featurize_data()
     return embeddings
