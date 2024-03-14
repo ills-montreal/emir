@@ -9,8 +9,7 @@
 #SBATCH --nodes=1
 #SBATCH --output=%x-%j.out
 
-export LENGTH=2048
-export DATASET=HIV
+export DATASET=ClinTox
 
 cd $SLURM_TMPDIR
 mkdir tmp_dir
@@ -22,16 +21,12 @@ module load python/3.10
 module load scipy-stack
 source /home/fransou/EMIR/bin/activate
 
-cd emir
-pip install -e .
-
-cd molecule
-mkdir data/$DATASET
-cp -r /home/fransou/scratch/DATA/EMIR/data/$DATASET/**$LENGTH** data/$DATASET/.
+cd emir/molecule
+cp -r /home/fransou/scratch/DATA/EMIR/data/$DATASET data
 cp -r /home/fransou/scratch/DATA/EMIR/backbone_pretrained_models ./
 
 export WANDB_MODE=offline
 
 
 echo "Running script"
-python main.py --dataset $DATASET --fp-length $LENGTH --out-dir /home/fransou/scratch/DATA/results --batch-size 8192 --n-epochs 100 --n-epochs-marg 100
+python main.py --dataset $DATASET --out-dir /home/fransou/scratch/DATA/results --batch-size 1024 --n-epochs 10 --n-epochs-marg 10

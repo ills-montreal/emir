@@ -18,20 +18,8 @@ parameters:
     values: [128]
   datasets:
     values: [
-        "hERG",
-        "DILI",
-        "Carcinogens_Lagunin",
-        "ClinTox",
-        "PAMPA_NCATS",
-        "HIA_Hou",
-        "Pgp_Broccatelli",
-        "Bioavailability_Ma",
-        "BBB_Martins",
-        "CYP2C9_Substrate_CarbonMangels",
-        "CYP2D6_Substrate_CarbonMangels",
-        "CYP3A4_Substrate_CarbonMangels",
+        "hERG"
       ]
-
 
 command:
   - ${env}

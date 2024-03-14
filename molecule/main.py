@@ -9,8 +9,8 @@ import pandas as pd
 import wandb
 
 
-from utils.knife_utils import compute_all_mi
-from parser_mol import (
+from molecule.utils.knife_utils import compute_all_mi
+from molecule.parser_mol import (
     add_eval_cli_args,
     add_knife_args,
 )

@@ -173,7 +173,7 @@ def add_FF_downstream_args(parser: argparse.ArgumentParser):
     :return:
     """
     parser.add_argument("--hidden-dim", type=int, default=32)
-    parser.add_argument("--n-layers", type=int, default=1)
+    parser.add_argument("--n-layers", type=int, default=0)
     parser.add_argument("--d-rate", type=float, default=0.0)
     parser.add_argument("--norm", type=str, default="layer")
     parser.add_argument("--lr", type=float, default=0.001)
