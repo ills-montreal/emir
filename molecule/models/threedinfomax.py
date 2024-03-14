@@ -21,9 +21,6 @@ from molecule.external_repo.threeDInfomax.datasets.custom_collate import (
     graph_only_collate,
 )
 
-REPO_PATH = "external_repo/threeDInfomax"
-
-
 def load_model(args, data, device):
     model = globals()[args.model_type](
         avg_d=data.avg_degree if hasattr(data, "avg_degree") else 1,
@@ -34,7 +31,6 @@ def load_model(args, data, device):
         # get arguments used during pretraining
         with open(
             os.path.join(
-                REPO_PATH,
                 os.path.dirname(args.pretrain_checkpoint),
                 "train_arguments.yaml",
             ),
@@ -44,7 +40,7 @@ def load_model(args, data, device):
         pretrain_args = argparse.Namespace()
         pretrain_args.__dict__.update(pretrain_dict)
         checkpoint = torch.load(
-            os.path.join(REPO_PATH, args.pretrain_checkpoint), map_location=device
+            args.pretrain_checkpoint, map_location=device
         )
         # get all the weights that have something from 'args.transfer_layers' in their keys name
         # but only if they do not contain 'teacher' and remove 'student.' which we need for loading from BYOLWrapper
