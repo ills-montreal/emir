@@ -21,10 +21,10 @@ class MoleOOD(nn.Module):
         dataset = splitted[1]
         architecture = splitted[2]
         base_backend = (
-            f"external_repo/MoleOOD/{dataset}/config/{architecture}_base_dp0.1.json"
+            f"backbone_pretrained_models/MoleOOD/config/{architecture}_base_dp0.1.json"
         )
-        sub_backend = f"external_repo/MoleOOD/{dataset}/config/{'GIN'}_sub_dp0.1.json"
-        model_path = f"external_repo/MoleOOD/{dataset}/saved_model/{architecture}.pth"
+        sub_backend = f"backbone_pretrained_models/MoleOOD/config/GIN_sub_dp0.1.json"
+        model_path = f"backbone_pretrained_models/MoleOOD/saved_model/{architecture}.pth"
 
         with open(base_backend) as Fin:
             base_backend_config = json.load(Fin)

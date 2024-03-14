@@ -147,4 +147,4 @@ stdout*
 runs2
 !/runs
 /runs/*
-!/runs/PNA_qmugs_NTXentMultiplePositives_620000_123_25-08_09-19-52
+!/molecule/backbone_pretrained_models/ThreeDInfomax/PNA_qmugs_NTXentMultiplePositives_620000_123_25-08_09-19-52

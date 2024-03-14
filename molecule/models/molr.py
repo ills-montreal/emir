@@ -8,7 +8,7 @@ class MolR(nn.Module):
     def __init__(self, name: str, batch_size: int = 256, device = "cpu", **kwargs):
         super(MolR, self).__init__()
         name = name.split("_")[1]
-        path = f"external_repo/MolR/saved/{name}_1024"
+        path = f"backbone_pretrained_models/MolR/{name}_1024"
         self.model = MolEFeaturizer(path)
         self.batch_size = batch_size
         self.device = device
