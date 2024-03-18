@@ -8,6 +8,7 @@ import uuid
 import re
 from pathlib import Path
 import pandas as pd
+import wandb
 
 
 def parse_args():
@@ -32,13 +33,16 @@ def parse_args():
 
     # stoping criterion
 
-    parser.add_argument("--n_epochs", type=int, default=1000)
+    parser.add_argument("--n_epochs", type=int, default=10)
+    parser.add_argument("--n_epochs_margs", type=int, default=5)
+
     parser.add_argument(
         "--stopping_criterion", type=str, default="max_epochs"
     )  # "max_epochs" or "early_stopping"
     parser.add_argument("--eps", type=float, default=1e-7)
 
     parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--margin_lr", type=float, default=0.1)
     parser.add_argument("--average", type=str, default="")
     parser.add_argument("--cov_diagonal", type=str, default="")
     parser.add_argument("--cov_off_diagonal", type=str, default="")
@@ -52,6 +56,7 @@ def parse_args():
     parser.add_argument("--ff_activation", type=str, default="relu")
     parser.add_argument("--ff_layer_norm", default=True, action="store_true")
     parser.add_argument("--ff_layers", type=int, default=2)
+    parser.add_argument("--ff_dim_hidden", type=int, default=0)
 
     parser.add_argument("--normalize_embeddings", action="store_true", default=False)
 
@@ -122,6 +127,8 @@ def main():
     args = parse_args()
     device = torch.device(args.device)
 
+    wandb.init(project="emir", config=vars(args))
+
     model_1_path = args.embeddings_dir / args.model_1
     model_2_path = args.embeddings_dir / args.model_2
 
@@ -136,15 +143,29 @@ def main():
     d_1 = embeddings_1.shape[1]
     d_2 = embeddings_2.shape[1]
 
-    mi, h2, h2h1, history = estimator.eval_per_sample(
+    mi, h2, h2h1 = estimator.eval_per_sample(
         embeddings_1, embeddings_2, record_loss=True
     )
-    steps = [i for i in range(len(history))]
-    history = {"steps": steps, "loss": history}
 
-    history = pd.DataFrame(history)
-    args.log_dir.mkdir(parents=True, exist_ok=True)
-    history.to_csv(args.log_dir / f"history_{unid_id}.csv")
+    history = estimator.recorded_loss
+    margin_history = estimator.recorded_marg_ent
+    cond_history = estimator.recorded_cond_ent
+
+    for step, hh in enumerate(margin_history):
+        wandb.log(
+            {
+                "margin_loss": hh,
+                "margin_step": step,
+            }
+        )
+
+    for step, hh in enumerate(cond_history):
+        wandb.log(
+            {
+                "cond_loss": hh,
+                "cond_step": step,
+            }
+        )
 
     df = pd.DataFrame({"I(X_1->X_2)": mi, "H(X_2)": h2, "H(X_2|X_1)": h2h1})
     df["id"] = unid_id

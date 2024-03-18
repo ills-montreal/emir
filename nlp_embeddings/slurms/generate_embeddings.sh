@@ -85,7 +85,7 @@ output_dir=$1
 #    "jspringer/echo-mistral-7b-instruct-lasttoken",
 #]
 
-for model in "WhereIsAI/UAE-Large-V1" "Salesforce/SFR-Embedding-Mistral" "GritLM/GritLM-7B" "jspringer/echo-mistral-7b-instruct-lasttoken"; do
+for model in  "Salesforce/SFR-Embedding-Mistral" "GritLM/GritLM-7B"; do
   for dataset in "mteb/sts12-sts" "mteb/sts13-sts" "mteb/sts14-sts" "mteb/sts15-sts" "mteb/amazon_polarity" "mteb/banking77" "mteb/sickr-sts" "mteb/biosses-sts" "mteb/stsbenchmark-sts" "mteb/imdb"  "snli"; do
     for split in "validation" "test"; do
     sbatch --job-name=emb \

@@ -110,17 +110,11 @@ class KNIFEEstimator:
         )
 
         with torch.no_grad():
-            mutual_information, marg_ent, cond_ent = self.knife(x, y)
+            mutual_information, marg_ent, cond_ent = self.batched_eval(x, y)
 
         return mutual_information.item(), marg_ent.item(), cond_ent.item()
 
-    def eval_per_sample(
-        self,
-        x: torch.Tensor,
-        y: torch.Tensor,
-        record_loss: Optional[bool] = False,
-        eval_batch_size: Optional[int] = 4096,
-    ) -> Tuple[List[float], List[float], List[float], List[float]]:
+    def batched_eval(self, x, y):
         """
         Mutual information between x and y
 
@@ -129,20 +123,44 @@ class KNIFEEstimator:
         :return: Tuple[float, float, float] mutual information, marginal entropy H(X), conditional entropy H(X|Y)
         """
 
-        # Create model for MI estimation
-        self.knife = torch.compile(
-            KNIFE(self.args, self.x_dim, self.y_dim).to(self.args.device)
-        )
+        eval_loader = FastTensorDataLoader(x, y, batch_size=self.args.batch_size)
 
-        # Fit the model
-        losses = self.fit_estimator(x, y, record_loss=record_loss)
-        # eval_loader = torch.utils.data.DataLoader(
-        #     torch.utils.data.TensorDataset(x, y), batch_size=eval_batch_size
-        # )
+        mi, h2, h2h1 = [], [], []
+        with torch.no_grad():
+            for x_batch, y_batch in tqdm(eval_loader, desc="Evaluating", position=-1):
+                with torch.no_grad():
+                    x_batch = x_batch.to(self.args.device)
+                    y_batch = y_batch.to(self.args.device)
+                    mutual_information, marg_ent, cond_ent = self.knife.forward_samples(
+                        x_batch.to(self.args.device), y_batch.to(self.args.device)
+                    )
+                    mi.append(mutual_information)
+                    h2.append(marg_ent)
+                    h2h1.append(cond_ent)
+
+        # average mi
+        mi = torch.cat(mi).mean()
+        h2 = torch.cat(h2).mean()
+        h2h1 = torch.cat(h2h1).mean()
+
+        return mi, h2, h2h1
+
+    def eval_per_sample(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+    ) -> Tuple[List[float], List[float], List[float]]:
+        """
+        Mutual information between x and y
+
+        :param x: torch.Tensor
+        :param y: torch.Tensor
+        :return: Tuple[float, float, float] mutual information, marginal entropy H(X), conditional entropy H(X|Y)
+        """
 
         eval_loader = FastTensorDataLoader(x, y, batch_size=self.args.batch_size)
 
-        mi, h1, h1h2 = [], [], []
+        mi, h2, h2h1 = [], [], []
         with torch.no_grad():
             for x_batch, y_batch in tqdm(eval_loader, desc="Evaluating", position=-1):
                 with torch.no_grad():
@@ -151,10 +169,10 @@ class KNIFEEstimator:
                     )
                     # tolist , extend
                     mi.extend(mutual_information.cpu().tolist())
-                    h1.extend(marg_ent.cpu().tolist())
-                    h1h2.extend(cond_ent.cpu().tolist())
+                    h2.extend(marg_ent.cpu().tolist())
+                    h2h1.extend(cond_ent.cpu().tolist())
 
-        return mi, h1, h1h2, losses
+        return mi, h2, h2h1
 
     def early_stopping(
         self,
@@ -183,7 +201,7 @@ class KNIFEEstimator:
         y,
         record_loss: Optional[bool] = False,
         fit_only_marginal: Optional[bool] = False,
-    ) -> List[float]:
+    ) -> None:
         """
         Fit the estimator to the data
         """
@@ -192,19 +210,22 @@ class KNIFEEstimator:
             x,
             y,
             batch_size=self.args.batch_size,
+            shuffle=True,
         )
-        optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.margin_lr)
 
         if (
             self.precomputed_marg_kernel is None
         ):  # If a marginal kernel is not precomputed, we train it
+            optimizer = torch.optim.Adam(
+                self.knife.kernel_marg.parameters(), lr=self.args.margin_lr
+            )
             for epoch in trange(self.args.n_epochs_marg):
                 epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_marginal(
                     train_loader, optimizer
                 )
                 self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
                 self.recorded_marg_ent.append(sum(epoch_marg_ent) / len(epoch_marg_ent))
-                self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
+                # self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
 
         self.knife.freeze_marginal()
         if not fit_only_marginal:  # If we want to fit the full KNIFE estimator
@@ -212,18 +233,22 @@ class KNIFEEstimator:
             with torch.no_grad():
                 marg_ent = []
                 for x_batch, y_batch in train_loader:
+                    # to device
+                    y_batch = y_batch.to(self.args.device)
                     marg_ent.append(self.knife.kernel_marg(y_batch))
                 marg_ent = torch.tensor(marg_ent).mean()
 
             # Then, we fit the conditional kernel
-            optimizer.param_groups[0]["lr"] = self.args.lr
+            optimizer = torch.optim.Adam(
+                self.knife.kernel_cond.parameters(), lr=self.args.lr
+            )
             for epoch in trange(self.args.n_epochs):
                 epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_conditional(
                     train_loader, optimizer
                 )
 
                 self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
-                self.recorded_marg_ent.append(sum(epoch_marg_ent) / len(epoch_marg_ent))
+                # self.recorded_marg_ent.append(sum(epoch_marg_ent) / len(epoch_marg_ent))
                 self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
 
                 logger.info("Epoch %d: loss = %f", epoch, self.recorded_loss[-1])
@@ -240,15 +265,16 @@ class KNIFEEstimator:
         epoch_loss = []
         epoch_marg_ent = []
         epoch_cond_ent = []
-        for x_batch, y_batch in train_loader:
+        for _, y_batch in train_loader:
+            y_batch = y_batch.to(self.args.device)
             optimizer.zero_grad()
             loss = self.knife.kernel_marg(y_batch)
             marg_ent = loss
             cond_ent = 0
             loss.backward()
             optimizer.step()
-            epoch_loss.append(loss)
-            epoch_marg_ent.append(marg_ent)
+            epoch_loss.append(loss.item())
+            epoch_marg_ent.append(marg_ent.item())
             epoch_cond_ent.append(cond_ent)
         return epoch_loss, epoch_marg_ent, epoch_cond_ent
 
@@ -261,15 +287,17 @@ class KNIFEEstimator:
         epoch_marg_ent = []
         epoch_cond_ent = []
         for x_batch, y_batch in train_loader:
+            x_batch = x_batch.to(self.args.device)
+            y_batch = y_batch.to(self.args.device)
             optimizer.zero_grad()
             loss = self.knife.kernel_cond(x_batch, y_batch)
             cond_ent = loss
             marg_ent = 0
             loss.backward()
             optimizer.step()
-            epoch_loss.append(loss)
+            epoch_loss.append(loss.item())
             epoch_marg_ent.append(marg_ent)
-            epoch_cond_ent.append(cond_ent)
+            epoch_cond_ent.append(cond_ent.item())
         return epoch_loss, epoch_marg_ent, epoch_cond_ent
 
 
