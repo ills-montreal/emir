@@ -179,7 +179,7 @@ class KNIFEEstimator:
         train_loader = DataLoader(
             train_set,
             batch_size=self.args.batch_size,
-            shuffle=True,
+            shuffle=True
         )
 
         optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.margin_lr)
