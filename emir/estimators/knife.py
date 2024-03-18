@@ -10,7 +10,6 @@ import torch.nn as nn
 from .kernels import KernelFactory
 
 
-
 class KNIFE(nn.Module):
     def __init__(
         self,
@@ -30,6 +29,10 @@ class KNIFE(nn.Module):
             zd_dim=zd_dim,
             init_samples=init_samples,
         )
+        # put precomputed kernels to device
+        self.kernel_cond = self.kernel_cond.to(args.device)
+        self.kernel_marg = self.kernel_marg.to(args.device)
+
         if precomputed_marg_kernel is not None:
             self.kernel_marg = precomputed_marg_kernel.to(args.device)
 
