@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=emir_molecule
 #SBATCH --account=def-ibenayed
-#SBATCH --time=0-06:00:00
+#SBATCH --time=0-02:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=40G
 #SBATCH --cpus-per-task=4
@@ -29,3 +29,4 @@ export WANDB_MODE=offline
 
 echo "Running script"
 python main.py --dataset $DATASET --out-dir /home/fransou/scratch/DATA/results --batch-size 1024 --n-epochs 10 --n-epochs-marg 10
+cp -r wandb /home/fransou/scratch/DATA/results/wandb

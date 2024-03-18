@@ -57,7 +57,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         action="store_true",
         help="Compute both MI(x1, x2) and MI(x2, x1)",
     )
-    parser.set_defaults(compute_both_mi=True)
+    parser.set_defaults(compute_both_mi=False)
 
     parser.add_argument(
         "--descriptors",
