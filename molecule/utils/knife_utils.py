@@ -3,17 +3,13 @@ from functools import partial
 from itertools import product
 from typing import List, Tuple, Dict
 
+import pickle
 import torch
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
 import argparse
 import datamol as dm
-
-from pathos.multiprocessing import ProcessingPool as Pool
-import multiprocessing as mp
-
-mp.set_start_method("forkserver")
 
 from emir.estimators import KNIFEEstimator, KNIFEArgs
 
@@ -97,6 +93,13 @@ def get_knife_marg_kernel(
     mols: List[dm.Mol] = None,
     args: argparse.Namespace = None,
 ) -> Dict[str, torch.nn.Module]:
+
+    if os.path.exists(os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key))):
+        with open(os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key)), "rb") as f:
+            marginal_kernel = pickle.load(f)
+        return {emb_key: marginal_kernel}
+
+
     x = embeddings_fn[emb_key](smiles, mols=mols).to("cpu")
     if (x == 0).logical_or(x == 1).all():
         x = (x != 0).float()
@@ -123,6 +126,9 @@ def get_knife_marg_kernel(
         ),
         index=False,
     )
+
+    with open(os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key)), "wb") as f:
+        pickle.dump(knife_estimator.knife.kernel_marg.to("cpu"), f)
 
     return {emb_key: knife_estimator.knife.kernel_marg.to("cpu")}
 
@@ -280,15 +286,11 @@ def compute_all_mi(
 
     all_embedders = args.descriptors + args.models
     all_embedders = list(set(all_embedders))
-    if args.n_jobs == 1:
-        all_marginal_kernels = list(
-            tqdm(map(marginal_fn, all_embedders), total=len(all_embedders))
-        )
-    else:
-        with Pool(args.n_jobs) as p:
-            all_marginal_kernels = list(
-                tqdm(p.imap(marginal_fn, all_embedders), total=len(all_embedders))
-            )
+
+    all_marginal_kernels = list(
+        tqdm(map(marginal_fn, all_embedders), total=len(all_embedders))
+    )
+
     log_concatenated_tables_from_dir(
         os.path.join(args.out_dir, "losses"), "marginals", ["_marg.csv"]
     )
@@ -306,21 +308,12 @@ def compute_all_mi(
         knife_config=knife_config,
     )
     all_combinaisons = list(product(args.models, args.descriptors))
-    if args.n_jobs == 1:
-        results = list(
-            tqdm(
-                map(model_profile_partial, all_combinaisons),
-                total=len(all_combinaisons),
-            )
+    results = list(
+        tqdm(
+            map(model_profile_partial, all_combinaisons),
+            total=len(all_combinaisons),
         )
-    else:
-        with Pool(args.n_jobs) as p:
-            results = list(
-                tqdm(
-                    p.imap(model_profile_partial, all_combinaisons),
-                    total=len(all_combinaisons),
-                )
-            )
+    )
 
     # save all df by concatenating those with the same model_name
     concatenated_df = {}
