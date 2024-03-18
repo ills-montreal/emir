@@ -97,7 +97,7 @@ def get_knife_marg_kernel(
     mols: List[dm.Mol] = None,
     args: argparse.Namespace = None,
 ) -> Dict[str, torch.nn.Module]:
-    x = embeddings_fn[emb_key](smiles, mols=mols).to(knife_config.device)
+    x = embeddings_fn[emb_key](smiles, mols=mols).to("cpu")
     if (x == 0).logical_or(x == 1).all():
         x = (x != 0).float()
 
@@ -153,14 +153,14 @@ def model_profile(
     model_name, desc = x_y
     model_embedding = embeddings_fn[model_name](smiles, mols=mols).to(
         knife_config.device
-    )
+    ).to("cpu")
     df_losses_XY = []
     df_losses_YX = []
 
     mis = []
     descriptors_embedding = embeddings_fn[desc](smiles, mols=mols).to(
         knife_config.device
-    )
+    ).to("cpu")
 
     for i in range(args.n_runs):
         mi, m, c, loss, marg_ent, cond_ent, kernel_marg = get_knife_preds(

@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Tuple, List, Optional, Literal
 
 import torch
+from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm, trange
 
 from .knife import KNIFE
@@ -108,11 +109,13 @@ class KNIFEEstimator:
             x, y, record_loss=record_loss, fit_only_marginal=fit_only_marginal
         )
 
+        self.knife = self.knife.to("cpu")
+        x, y = x.to("cpu"), y.to("cpu")
+
         with torch.no_grad():
             mutual_information, marg_ent, cond_ent = self.knife(x, y)
 
         return mutual_information.item(), marg_ent.item(), cond_ent.item()
-
 
     def eval_per_sample(
         self, x: torch.Tensor, y: torch.Tensor, record_loss: Optional[bool] = False
@@ -172,12 +175,13 @@ class KNIFEEstimator:
         Fit the estimator to the data
         """
 
-        train_loader = FastTensorDataLoader(
-            x,
-            y,
+        train_set = TensorDataset(x, y)
+        train_loader = DataLoader(
+            train_set,
             batch_size=self.args.batch_size,
             shuffle=True,
         )
+
         optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.margin_lr)
 
         if (
@@ -188,12 +192,17 @@ class KNIFEEstimator:
                     train_loader, optimizer
                 )
 
-                # Log 200 values for the loss
-                for i in range(0, len(epoch_loss) // 200):
-                    stop_idx = min((i + 1) * 200, len(epoch_loss))
-                    self.recorded_loss.append(epoch_loss[i:stop_idx].mean())
-                    self.recorded_marg_ent.append(epoch_marg_ent[i:stop_idx].mean())
-                    self.recorded_cond_ent.append(epoch_cond_ent[i:stop_idx].mean())
+                # Log 50 values for the loss
+                step = len(epoch_loss) // 50
+                for i in range(0, len(epoch_loss), step):
+                    stop_idx = min(i + step, len(epoch_loss))
+                    self.recorded_loss.append(
+                        torch.tensor(epoch_loss[i:stop_idx]).mean()
+                    )
+                    self.recorded_marg_ent.append(
+                        torch.tensor(epoch_marg_ent[i:stop_idx]).mean()
+                    )
+                    self.recorded_cond_ent.append(0)
 
         self.knife.freeze_marginal()
 
@@ -202,6 +211,7 @@ class KNIFEEstimator:
             with torch.no_grad():
                 marg_ent = []
                 for x_batch, y_batch in train_loader:
+                    y_batch = y_batch.to(self.args.device)
                     marg_ent.append(self.knife.kernel_marg(y_batch))
                 marg_ent = torch.tensor(marg_ent).mean()
 
@@ -211,14 +221,23 @@ class KNIFEEstimator:
                 epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_conditional(
                     train_loader, optimizer
                 )
-                # Log 200 values for the loss
-                for i in range(0, len(epoch_loss) // 200):
-                    stop_idx = min((i + 1) * 200, len(epoch_loss))
-                    self.recorded_loss.append(epoch_loss[i:stop_idx].mean())
-                    self.recorded_marg_ent.append(epoch_marg_ent[i:stop_idx].mean())
-                    self.recorded_cond_ent.append(epoch_cond_ent[i:stop_idx].mean())
+                # Log 50 values for the loss
+                step = len(epoch_loss) // 50
+                for i in range(0, len(epoch_loss), step):
+                    stop_idx = min(i + step, len(epoch_loss))
+                    self.recorded_loss.append(
+                        torch.tensor(epoch_loss[i:stop_idx]).mean()
+                    )
+                    self.recorded_marg_ent.append(0)
+                    self.recorded_cond_ent.append(
+                        torch.tensor(epoch_cond_ent[i:stop_idx]).mean()
+                    )
 
-                logger.info("Epoch %d: loss = %f", epoch, epoch_loss.mean())
+                logger.info(
+                    "Epoch %d: loss = %f",
+                    epoch,
+                    torch.tensor(epoch_loss[i:stop_idx]).mean(),
+                )
 
                 if self.early_stopping(self.recorded_loss, marg_ent):
                     logger.info("Reached early stopping criterion")
@@ -233,6 +252,9 @@ class KNIFEEstimator:
         epoch_marg_ent = []
         epoch_cond_ent = []
         for x_batch, y_batch in train_loader:
+            x_batch, y_batch = x_batch.to(self.args.device), y_batch.to(
+                self.args.device
+            )
             optimizer.zero_grad()
             loss = self.knife.kernel_marg(y_batch)
             marg_ent = loss
@@ -253,6 +275,9 @@ class KNIFEEstimator:
         epoch_marg_ent = []
         epoch_cond_ent = []
         for x_batch, y_batch in train_loader:
+            x_batch, y_batch = x_batch.to(self.args.device), y_batch.to(
+                self.args.device
+            )
             optimizer.zero_grad()
             loss = self.knife.kernel_cond(x_batch, y_batch)
             cond_ent = loss
@@ -263,53 +288,3 @@ class KNIFEEstimator:
             epoch_marg_ent.append(marg_ent)
             epoch_cond_ent.append(cond_ent)
         return epoch_loss, epoch_marg_ent, epoch_cond_ent
-
-
-class FastTensorDataLoader:
-    """
-    A DataLoader-like object for a set of tensors that can be much faster than
-    torch.TensorDataset + DataLoader because dataloader grabs individual indices of
-    the dataset and calls cat (slow).
-    Source: https://discuss.pytorch.org/t/dataloader-much-slower-than-manual-batching/27014/6
-    """
-
-    def __init__(self, *tensors, batch_size=32, shuffle=False):
-        """
-        Initialize a Fasttorch.TensorDataLoader.
-
-        :param *tensors: tensors to store. Must have the same length @ dim 0.
-        :param batch_size: batch size to load.
-        :param shuffle: if True, shuffle the data *in-place* whenever an
-            iterator is created out of this object.
-
-        :returns: A Fasttorch.TensorDataLoader.
-        """
-        assert all(t.shape[0] == tensors[0].shape[0] for t in tensors)
-        self.tensors = tensors
-
-        self.dataset_len = self.tensors[0].shape[0]
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-
-        # Calculate # batches
-        n_batches, remainder = divmod(self.dataset_len, self.batch_size)
-        if remainder > 0:
-            n_batches += 1
-        self.n_batches = n_batches
-
-    def __iter__(self):
-        if self.shuffle:
-            r = torch.randperm(self.dataset_len)
-            self.tensors = [t[r] for t in self.tensors]
-        self.i = 0
-        return self
-
-    def __next__(self):
-        if self.i >= self.dataset_len:
-            raise StopIteration
-        batch = tuple(t[self.i : self.i + self.batch_size] for t in self.tensors)
-        self.i += self.batch_size
-        return batch
-
-    def __len__(self):
-        return self.n_batches

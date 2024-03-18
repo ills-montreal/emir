@@ -121,6 +121,7 @@ class MolecularFeatureExtractor:
                 )
                 print(f"Loaded {name}.npy")
             else:
+                print(f"Computing {name}.npy")
                 molecular_embedding = ModelFactory(name)(
                     smiles,
                     mols=mols,

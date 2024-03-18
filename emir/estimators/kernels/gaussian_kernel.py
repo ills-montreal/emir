@@ -22,7 +22,10 @@ class GaussianMargKernel(BaseMargKernel):
         self.K = args.marg_modes if self.optimize_mu else args.batch_size
         self.init_std = args.init_std
 
-        self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device)
+        self.logC = nn.Parameter(
+            torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device),
+            requires_grad=False,
+        )
 
         if init_samples is None:
             init_samples = self.init_std * torch.randn((self.K, self.d))
@@ -84,7 +87,10 @@ class GaussianCondKernel(BaseCondKernel):
     def __init__(self, args, zc_dim, zd_dim, **kwargs):
         super().__init__(args, zc_dim, zd_dim)
         self.K = args.cond_modes
-        self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device)
+        self.logC = nn.Parameter(
+            torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device),
+            requires_grad=False,
+        )
 
         self.mu = FF(args, zc_dim, self.ff_hidden_dim, self.K * self.d)
         self.logvar = FF(args, zc_dim, self.ff_hidden_dim, self.K * self.d)
@@ -118,4 +124,3 @@ class GaussianCondKernel(BaseCondKernel):
         z = -z / 2 + torch.log(torch.abs(var) + 1e-8).sum(-1) + w
         z = torch.logsumexp(z, dim=-1)
         return self.logC + z
-
