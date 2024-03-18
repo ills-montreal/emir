@@ -27,7 +27,7 @@ def get_embeddings_from_model_denoising(
     pos = []
     valence_charges = []
 
-    for i, mol in enumerate(mols):
+    for i, mol in enumerate(tqdm(mols, "Computing positions")):
         for j, c in enumerate(mol.GetConformers()):
             pos.append(c.GetPositions())
             valence_charges.append([a.GetAtomicNum() for a in mol.GetAtoms()])

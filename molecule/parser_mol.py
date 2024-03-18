@@ -41,6 +41,13 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "ChemGPT-4.7M",
             "DenoisingPretrainingPQCMv4",
             "FRAD_QM9",
+            "MolR_gat",
+            "MolR_gcn",
+            "MolR_tag",
+            "MoleOOD_OGB_GIN"
+            "MoleOOD_OGB_GCN",
+            "MoleOOD_OGB_SAGE",
+            "ThreeDInfoMax"
         ],
         help="List of models to compare",
     )

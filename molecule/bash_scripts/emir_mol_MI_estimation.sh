@@ -27,6 +27,5 @@ cp -r /home/fransou/scratch/DATA/EMIR/backbone_pretrained_models ./
 
 export WANDB_MODE=offline
 
-
 echo "Running script"
 python main.py --dataset $DATASET --out-dir /home/fransou/scratch/DATA/results --batch-size 1024 --n-epochs 10 --n-epochs-marg 10
