@@ -193,7 +193,7 @@ class KNIFEEstimator:
                 )
 
                 # Log 50 values for the loss
-                step = len(epoch_loss) // 50
+                step = max(len(epoch_loss) // 50, 1)
                 for i in range(0, len(epoch_loss), step):
                     stop_idx = min(i + step, len(epoch_loss))
                     self.recorded_loss.append(
@@ -222,7 +222,8 @@ class KNIFEEstimator:
                     train_loader, optimizer
                 )
                 # Log 50 values for the loss
-                step = len(epoch_loss) // 50
+                step = max(len(epoch_loss) // 50, 1)
+
                 for i in range(0, len(epoch_loss), step):
                     stop_idx = min(i + step, len(epoch_loss))
                     self.recorded_loss.append(
