@@ -19,6 +19,51 @@ from molecule.parser_mol import (
     add_knife_args,
 )
 
+GROUPED_MODELS = {
+    "GNN": [
+        "ContextPred",
+        "GPT-GNN",
+        "GraphMVP",
+        "GROVER",
+        # "EdgePred", # This model is especially bad and makes visualization hard
+        "AttributeMask",
+        "GraphLog",
+        "GraphCL",
+        "InfoGraph",
+        "Not-trained"
+    ],
+    "BERT": [
+        "MolBert",
+        "ChemBertMLM-5M",
+        "ChemBertMLM-10M",
+        "ChemBertMLM-77M",
+        "ChemBertMTR-5M",
+        "ChemBertMTR-10M",
+        "ChemBertMTR-77M",
+    ],
+    "GPT": [
+        "ChemGPT-1.2B",
+        "ChemGPT-19M",
+        "ChemGPT-4.7M",
+    ],
+    "Denoising": [
+        "DenoisingPretrainingPQCMv4",
+        "FRAD_QM9",
+    ],
+    "MolR": [
+        "MolR_gat",
+        "MolR_gcn",
+        "MolR_tag",
+    ],
+    "MoleOOD": [
+        "MoleOOD_OGB_GIN",
+        "MoleOOD_OGB_GCN",
+        "MoleOOD_OGB_SAGE",
+    ],
+    "ThreeD": [
+        "ThreeDInfomax",
+    ],
+}
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +89,14 @@ def main():
     parser = add_eval_cli_args(parser)
     parser = add_knife_args(parser)
     args = parser.parse_args()
+
+    new_models = []
+    for models in args.models:
+        if not models in GROUPED_MODELS:
+            new_models.append(models)
+        else:
+            new_models += GROUPED_MODELS[models]
+    args.models = new_models
 
     args.out_dir = os.path.join(
         args.out_dir, args.dataset, str(args.fp_length), str(args.mds_dim)
