@@ -75,6 +75,7 @@ TASKS_DATASET = {
     "imdb": {
         "dataset_name": "imdb",
         "config": "plain_text",
+<<<<<<< HEAD
         "task": "Sentiment classification",
         "num_classes": 2,
     },  # text, label
@@ -214,6 +215,8 @@ TASKS_DATASET = {
     "imdb": {
         "dataset_name": "imdb",
         "config": None,
+=======
+>>>>>>> ba18e5c (working nlp embeddings + some updates to common code)
         "task": "Sentiment classification",
         "num_classes": 2,
     },  # text, label
@@ -223,6 +226,18 @@ TASKS_DATASET = {
         "task": "Intent classification",
         "num_classes": 151,
     },  # text, intent
+    "ag_news": {
+        "dataset_name": "ag_news",
+        "config": None,
+        "task": "Topic classification",
+        "num_classes": 4,
+    },  # text, label
+    "dair-ai/emotion": {
+        "dataset_name": "dair-ai/emotion",
+        "config": None,
+        "task": "Emotion classification",
+        "num_classes": 6,
+    },  # text, label
 }
 
 
@@ -233,7 +248,10 @@ def load_emd_classif_dataset(task_name):
     else:
         raise ValueError(f"Task {task_name} not found in TASKS_DATASET")
 
-    dataset = load_dataset(dataset_name, config)
+    if config is None:
+        dataset = load_dataset(dataset_name)
+    else:
+        dataset = load_dataset(dataset_name, config)
 
     # what split is there?
     splits = list(dataset.keys())
@@ -265,6 +283,10 @@ def load_emd_classif_dataset(task_name):
     elif task_name == "imdb":
         pass
     elif task_name == "yelp_review_full":
+        pass
+    elif task_name == "ag_news":
+        pass
+    elif task_name == "dair-ai/emotion":
         pass
     elif task_name == "sst2":
         for split in splits:

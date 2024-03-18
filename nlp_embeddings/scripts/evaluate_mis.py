@@ -17,9 +17,13 @@ import re
 from pathlib import Path
 import pandas as pd
 <<<<<<< HEAD
+<<<<<<< HEAD
 import wandb
 =======
 >>>>>>> 0edeba6 (merge knife estimator)
+=======
+import wandb
+>>>>>>> ba18e5c (working nlp embeddings + some updates to common code)
 
 
 def parse_args():
@@ -69,12 +73,18 @@ def parse_args():
     # stoping criterion
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     parser.add_argument("--n_epochs", type=int, default=10)
     parser.add_argument("--n_epochs_margs", type=int, default=5)
 
 =======
     parser.add_argument("--n_epochs", type=int, default=1000)
 >>>>>>> 33a03ab (fix kinfe estimator)
+=======
+    parser.add_argument("--n_epochs", type=int, default=10)
+    parser.add_argument("--n_epochs_margs", type=int, default=5)
+
+>>>>>>> ba18e5c (working nlp embeddings + some updates to common code)
     parser.add_argument(
         "--stopping_criterion", type=str, default="max_epochs"
     )  # "max_epochs" or "early_stopping"
@@ -82,9 +92,13 @@ def parse_args():
 
     parser.add_argument("--lr", type=float, default=0.001)
 <<<<<<< HEAD
+<<<<<<< HEAD
     parser.add_argument("--margin_lr", type=float, default=0.1)
 =======
 >>>>>>> 33a03ab (fix kinfe estimator)
+=======
+    parser.add_argument("--margin_lr", type=float, default=0.1)
+>>>>>>> ba18e5c (working nlp embeddings + some updates to common code)
     parser.add_argument("--average", type=str, default="")
     parser.add_argument("--cov_diagonal", type=str, default="")
     parser.add_argument("--cov_off_diagonal", type=str, default="")
@@ -99,6 +113,9 @@ def parse_args():
     parser.add_argument("--ff_layer_norm", default=True, action="store_true")
     parser.add_argument("--ff_layers", type=int, default=2)
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ba18e5c (working nlp embeddings + some updates to common code)
     parser.add_argument("--ff_dim_hidden", type=int, default=0)
 
     parser.add_argument("--normalize_embeddings", action="store_true", default=False)
@@ -254,6 +271,9 @@ def main():
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ba18e5c (working nlp embeddings + some updates to common code)
     wandb.init(project="emir", config=vars(args))
 
     model_1_path = args.embeddings_dir / args.model_1
@@ -287,6 +307,7 @@ def main():
     d_2 = embeddings_2.shape[1]
 
     mi, h2, h2h1 = estimator.eval_per_sample(
+<<<<<<< HEAD
         embeddings_1, embeddings_2, record_loss=True
     )
 
@@ -322,14 +343,30 @@ def main():
 >>>>>>> 33a03ab (fix kinfe estimator)
 
     mi, h2, h2h1, history = estimator.eval_per_sample(
+=======
+>>>>>>> ba18e5c (working nlp embeddings + some updates to common code)
         embeddings_1, embeddings_2, record_loss=True
     )
-    steps = [i for i in range(len(history))]
-    history = {"steps": steps, "loss": history}
 
-    history = pd.DataFrame(history)
-    args.log_dir.mkdir(parents=True, exist_ok=True)
-    history.to_csv(args.log_dir / f"history_{unid_id}.csv")
+    history = estimator.recorded_loss
+    margin_history = estimator.recorded_marg_ent
+    cond_history = estimator.recorded_cond_ent
+
+    for step, hh in enumerate(margin_history):
+        wandb.log(
+            {
+                "margin_loss": hh,
+                "margin_step": step,
+            }
+        )
+
+    for step, hh in enumerate(cond_history):
+        wandb.log(
+            {
+                "cond_loss": hh,
+                "cond_step": step,
+            }
+        )
 
     df = pd.DataFrame({"I(X_1->X_2)": mi, "H(X_2)": h2, "H(X_2|X_1)": h2h1})
     df["id"] = unid_id
