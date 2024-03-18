@@ -111,7 +111,7 @@ def get_knife_marg_kernel(
     df_run_marg_kernel = pd.DataFrame(
         {
             "marg_ent": marg_ent.cpu().numpy(),
-            "epoch": range(len(marg_ent)),
+            "epoch": np.linspace(0, args.n_epochs, len(marg_ent)),
             "run": 0,
             "X": emb_key.replace("/", "_"),
         }
@@ -191,7 +191,7 @@ def model_profile(
             pd.DataFrame(
                 {
                     "cond_ent": cond_ent.cpu().numpy(),
-                    "epoch": np.arange(0, args.n_epochs),
+                    "epoch": np.linspace(0, args.n_epochs, len(cond_ent)),
                     "run": i,
                     "X": desc.replace("/", "_"),
                     "Y": model_name.replace("/", "_"),
@@ -216,7 +216,7 @@ def model_profile(
                 pd.DataFrame(
                     {
                         "cond_ent": cond_ent.cpu().numpy(),
-                        "epoch": np.arange(0, args.n_epochs),
+                        "epoch": np.linspace(0, args.n_epochs, len(cond_ent)),
                         "run": i,
                         "X": desc.replace("/", "_"),
                         "Y": model_name.replace("/", "_"),
