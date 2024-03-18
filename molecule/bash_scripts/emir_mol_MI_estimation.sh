@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=emir_molecule
 #SBATCH --account=def-ibenayed
-#SBATCH --time=0-18:00:00
+#SBATCH --time=0-06:00:00
 #SBATCH --gres=gpu:1
-#SBATCH --mem=64G
+#SBATCH --mem=40G
 #SBATCH --cpus-per-task=4
 #SBATCH --tasks-per-node=1
 #SBATCH --nodes=1

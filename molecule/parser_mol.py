@@ -44,10 +44,10 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "MolR_gat",
             "MolR_gcn",
             "MolR_tag",
-            "MoleOOD_OGB_GIN"
+            "MoleOOD_OGB_GIN",
             "MoleOOD_OGB_GCN",
             "MoleOOD_OGB_SAGE",
-            "ThreeDInfoMax"
+            "ThreeDInfomax"
         ],
         help="List of models to compare",
     )
@@ -92,7 +92,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "MoleOOD_OGB_GIN"
             "MoleOOD_OGB_GCN",
             "MoleOOD_OGB_SAGE",
-            "ThreeDInfoMax"
+            "ThreeDInfomax"
         ],
         help="List of descriptors to compare",
     )
@@ -140,7 +140,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--stopping-criterion", type=str, default="early_stopping")
     parser.add_argument("--eps", type=float, default=1e-5)
     parser.add_argument("--n-epochs-stop", type=int, default=5)
-    parser.add_argument("--margin-lr", type=float, default=0.01)
+    parser.add_argument("--margin-lr", type=float, default=0.001)
     return parser
 
 

@@ -191,7 +191,7 @@ def model_profile(
             pd.DataFrame(
                 {
                     "cond_ent": cond_ent.cpu().numpy(),
-                    "epoch": range(len(loss)),
+                    "epoch": np.arange(0, args.n_epochs),
                     "run": i,
                     "X": desc.replace("/", "_"),
                     "Y": model_name.replace("/", "_"),
@@ -216,7 +216,7 @@ def model_profile(
                 pd.DataFrame(
                     {
                         "cond_ent": cond_ent.cpu().numpy(),
-                        "epoch": range(len(loss)),
+                        "epoch": np.arange(0, args.n_epochs),
                         "run": i,
                         "X": desc.replace("/", "_"),
                         "Y": model_name.replace("/", "_"),

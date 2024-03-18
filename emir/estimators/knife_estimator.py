@@ -176,6 +176,7 @@ class KNIFEEstimator:
             x,
             y,
             batch_size=self.args.batch_size,
+            shuffle=True,
         )
         optimizer = torch.optim.SGD(self.knife.parameters(), lr=self.args.margin_lr)
 
@@ -186,9 +187,13 @@ class KNIFEEstimator:
                 epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_marginal(
                     train_loader, optimizer
                 )
-                self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
-                self.recorded_marg_ent.append(sum(epoch_marg_ent) / len(epoch_marg_ent))
-                self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
+
+                # Log 200 values for the loss
+                for i in range(0, len(epoch_loss) // 200):
+                    stop_idx = min((i + 1) * 200, len(epoch_loss))
+                    self.recorded_loss.append(epoch_loss[i:stop_idx].mean())
+                    self.recorded_marg_ent.append(epoch_marg_ent[i:stop_idx].mean())
+                    self.recorded_cond_ent.append(epoch_cond_ent[i:stop_idx].mean())
 
         self.knife.freeze_marginal()
 
@@ -206,12 +211,14 @@ class KNIFEEstimator:
                 epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_conditional(
                     train_loader, optimizer
                 )
+                # Log 200 values for the loss
+                for i in range(0, len(epoch_loss) // 200):
+                    stop_idx = min((i + 1) * 200, len(epoch_loss))
+                    self.recorded_loss.append(epoch_loss[i:stop_idx].mean())
+                    self.recorded_marg_ent.append(epoch_marg_ent[i:stop_idx].mean())
+                    self.recorded_cond_ent.append(epoch_cond_ent[i:stop_idx].mean())
 
-                self.recorded_loss.append(sum(epoch_loss) / len(epoch_loss))
-                self.recorded_marg_ent.append(sum(epoch_marg_ent) / len(epoch_marg_ent))
-                self.recorded_cond_ent.append(sum(epoch_cond_ent) / len(epoch_cond_ent))
-
-                logger.info("Epoch %d: loss = %f", epoch, self.recorded_loss[-1])
+                logger.info("Epoch %d: loss = %f", epoch, epoch_loss.mean())
 
                 if self.early_stopping(self.recorded_loss, marg_ent):
                     logger.info("Reached early stopping criterion")
