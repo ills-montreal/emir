@@ -1,0 +1,24 @@
+AMES:
+  hidden_dim: 64
+  d_rate: 0
+  n_layers: 1
+Carcinogens_Lagunin:
+  hidden_dim: 32
+  d_rate: 0.1
+  n_layers: 1
+DILI:
+  hidden_dim: 64
+  d_rate: 0
+  n_layers: 1
+hERG:
+  hidden_dim: 32
+  d_rate: 0
+  n_layers: 1
+hERG_Karim:
+  hidden_dim: 64
+  d_rate: 0.1
+  n_layers: 2
+Tox21:
+  hidden_dim: 32
+  d_rate: 0.1
+  n_layers: 1
