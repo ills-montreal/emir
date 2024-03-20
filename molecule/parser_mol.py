@@ -47,7 +47,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "MoleOOD_OGB_GIN",
             "MoleOOD_OGB_GCN",
             "MoleOOD_OGB_SAGE",
-            "ThreeDInfomax"
+            "ThreeDInfomax",
         ],
         help="List of models to compare",
     )
@@ -92,7 +92,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
             "MoleOOD_OGB_GIN",
             "MoleOOD_OGB_GCN",
             "MoleOOD_OGB_SAGE",
-            "ThreeDInfomax"
+            "ThreeDInfomax",
         ],
         help="List of descriptors to compare",
     )
@@ -186,9 +186,11 @@ def add_FF_downstream_args(parser: argparse.ArgumentParser):
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--n-epochs", type=int, default=100)
+    parser.add_argument("--test-batch-size", type=int, default=256)
+
+    parser.add_argument("--hpo-whole-config", type=str, default=None)
 
     return parser
-
 
 
 def add_downstream_args(parser: argparse.ArgumentParser):
@@ -197,7 +199,7 @@ def add_downstream_args(parser: argparse.ArgumentParser):
     :param parser:
     :return:
     """
-    parser.add_argument("--datasets", type=str, nargs="+", default=["TOX"])
+    parser.add_argument("--datasets", type=str, nargs="+", default=["TOX", "ADME"])
     parser.add_argument("--length", type=int, default=1024)
     parser.add_argument(
         "--embedders",
@@ -212,4 +214,8 @@ def add_downstream_args(parser: argparse.ArgumentParser):
     parser.add_argument("--plot-loss", action="store_true")
     parser.set_defaults(plot_loss=False)
 
+    parser.add_argument("--test-run", action="store_true")
+    parser.set_defaults(test_run=False)
+
+    parser.add_argument("--config", type=str, default="downstream_config.yaml")
     return parser

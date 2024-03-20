@@ -15,6 +15,7 @@ correspondancy_dict = {
     "hERG_Karim": Tox,
     "AMES": Tox,
     "DILI": Tox,
+    "Skin__Reaction": Tox,
     "Skin Reaction": Tox,
     "Carcinogens_Lagunin": Tox,
     "ClinTox": Tox,
@@ -39,6 +40,7 @@ correspondancy_dict = {
     "CYP3A4_Substrate_CarbonMangels": ADME,
     "Half_Life_Obach": ADME,
     "Clearance_Hepatocyte_AZ": ADME,
+    "Clearance_Microsome_AZ": ADME,
     "SARSCoV2_Vitro_Touret": HTS,
     "SARSCoV2_3CLPro_Diamond": HTS,
     "HIV": HTS,
@@ -62,26 +64,40 @@ correspondancy_dict = {
 
 def get_dataset(dataset: str):
     try:
-        df = correspondancy_dict[dataset](name=dataset).get_data()
+        data = correspondancy_dict[dataset](name=dataset)
+        if dataset in ["DAVIS"]:
+            data.harmonize_affinities(mode = 'max_affinity')
+        df = data.get_data()
     except Exception as e:
-        if e.args[0].startswith("Please select a label name. You can use tdc.utils.retrieve_label_name_list"):
+        if e.args[0].startswith(
+            "Please select a label name. You can use tdc.utils.retrieve_label_name_list"
+        ):
             label_list = retrieve_label_name_list(dataset)
-            df=[]
+            df = []
             for l in tqdm(label_list):
-                df.append(correspondancy_dict[dataset](name=dataset, label_name=l).get_data())
-            df  = pd.concat(df).drop_duplicates("Drug")
+                df.append(
+                    correspondancy_dict[dataset](name=dataset, label_name=l).get_data()
+                )
+            df = pd.concat(df).drop_duplicates("Drug")
     return df
+
 
 def get_dataset_split(dataset: str, random_seed: int = 42):
     try:
         split = correspondancy_dict[dataset](name=dataset).get_split(seed=random_seed)
         return [split]
     except Exception as e:
-        if e.args[0].startswith("Please select a label name. You can use tdc.utils.retrieve_label_name_list"):
+        if e.args[0].startswith(
+            "Please select a label name. You can use tdc.utils.retrieve_label_name_list"
+        ):
             label_list = retrieve_label_name_list(dataset)
             split = []
             for l in tqdm(label_list):
-                split.append(correspondancy_dict[dataset](name=dataset, label_name=l).get_split(seed=random_seed))
+                split.append(
+                    correspondancy_dict[dataset](name=dataset, label_name=l).get_split(
+                        seed=random_seed
+                    )
+                )
             return split
         else:
             raise e

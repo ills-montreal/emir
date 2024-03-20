@@ -119,9 +119,7 @@ class MolecularFeatureExtractor:
                 molecular_embedding = torch.tensor(
                     np.load(f"data/{dataset}/{name}.npy"), device=device
                 )
-                print(f"Loaded {name}.npy")
             else:
-                print(f"Computing {name}.npy")
                 molecular_embedding = ModelFactory(name)(
                     smiles,
                     mols=mols,

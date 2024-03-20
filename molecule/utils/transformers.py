@@ -27,7 +27,7 @@ def get_embeddings_from_transformers_batch(
             batch, padding=True, truncation=True, return_tensors="pt", max_length=128
         ).to(device)
         model_out = model(**input_tok)
-        if len(model_out.hidden_states) > 1:
+        if model_out.hidden_states is not None and len(model_out.hidden_states) > 1:
             embeddings = model_out.hidden_states[0]
         if isinstance(model_out, MaskedLMOutput):
             embeddings = model_out.logits[:, 0, :]
