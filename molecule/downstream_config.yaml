@@ -1,24 +1,84 @@
 AMES:
-  hidden_dim: 64
-  d_rate: 0
+  hidden_dim: 128
+  d_rate: 0.2
   n_layers: 1
 Carcinogens_Lagunin:
   hidden_dim: 32
-  d_rate: 0.1
+  d_rate: 0.2
   n_layers: 1
 DILI:
   hidden_dim: 64
-  d_rate: 0
+  d_rate: 0.2
   n_layers: 1
 hERG:
-  hidden_dim: 32
-  d_rate: 0
+  hidden_dim: 64
+  d_rate: 0.2
   n_layers: 1
 hERG_Karim:
-  hidden_dim: 64
-  d_rate: 0.1
+  hidden_dim: 128
+  d_rate: 0.2
   n_layers: 2
-Tox21:
-  hidden_dim: 32
-  d_rate: 0.1
+ClinTox:
+  hidden_dim: 128
+  d_rate: 0.2
   n_layers: 1
+Tox21:
+  hidden_dim: 128
+  d_rate: 0.2
+  n_layers: 1
+Skin__Reaction:
+  hidden_dim: 128
+  d_rate: 0
+  n_layers: 1
+PAMPA_NCATS:
+    hidden_dim: 128
+    d_rate: 0
+    n_layers: 1
+HIA_Hou:
+    hidden_dim: 128
+    d_rate: 0
+    n_layers: 1
+Pgp_Broccatelli:
+    hidden_dim: 128
+    d_rate: 0
+    n_layers: 1
+Bioavailability_Ma:
+    hidden_dim: 64
+    d_rate: 0.2
+    n_layers: 2
+BBB_Martins:
+    hidden_dim: 128
+    d_rate: 0
+    n_layers: 1
+CYP2C19_Veith:
+    hidden_dim: 128
+    d_rate: 0.2
+    n_layers: 1
+CYP2D6_Veith:
+    hidden_dim: 128
+    d_rate: 0.2
+    n_layers: 1
+CYP3A4_Veith:
+    hidden_dim: 128
+    d_rate: 0.2
+    n_layers: 1
+CYP1A2_Veith:
+    hidden_dim: 128
+    d_rate: 0.2
+    n_layers: 1
+CYP2C9_Veith:
+    hidden_dim: 128
+    d_rate: 0.2
+    n_layers: 1
+CYP2C9_Substrate_CarbonMangels:
+    hidden_dim: 128
+    d_rate: 0
+    n_layers: 1
+CYP2D6_Substrate_CarbonMangels:
+    hidden_dim: 64
+    d_rate: 0.2
+    n_layers: 1
+CYP3A4_Substrate_CarbonMangels:
+    hidden_dim: 32
+    d_rate: 0.2
+    n_layers: 1

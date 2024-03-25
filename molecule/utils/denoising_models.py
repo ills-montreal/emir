@@ -36,6 +36,12 @@ def get_embeddings_from_model_denoising(
     for i in tqdm(range(0, n_molecules, batch_size), desc="Computing embeddings"):
         batch_pos = pos[i : min(i + batch_size, n_molecules)]
         batch_valence_charges = valence_charges[i : min(i + batch_size, n_molecules)]
+        for j in range(len(batch_pos)):
+            if np.isnan(batch_pos[j]).any():
+                print(f"NaNs in batch_pos at index {i}")
+        for j in range(len(batch_valence_charges)):
+            if np.isnan(batch_valence_charges[j]).any():
+                print(f"NaNs in batch_valence_charges at index {i}")
         batch = [[i] * len(b) for i, b in enumerate(batch_pos)]
 
         batch_pos = np.concatenate(batch_pos, axis=0)
@@ -47,7 +53,8 @@ def get_embeddings_from_model_denoising(
         batch_valence_charges = torch.tensor(batch_valence_charges, device=device)
 
         x, _, _, _, _ = model(z = batch_valence_charges.long(), pos=batch_pos.float(), batch=batch.long())
-
+        if np.isnan(x.cpu().numpy()).any():
+            print(f"NaNs in x at index {i}")
         if pooling_method == "mean":
             x = nn.global_mean_pool(x, batch)
         elif pooling_method == "add":

@@ -36,7 +36,9 @@ def precompute_3d(smiles: List[str], dataset_name: str = "tox21", n_jobs: int = 
             if mol is not None:
                 mols.append(mol)
 
+    smiles = [dm.to_smiles(m, True, False) for m in mols]
     dm.to_sdf(mols, f"data/{dataset_name}_3d.sdf")
+
     return mols, smiles
 
 

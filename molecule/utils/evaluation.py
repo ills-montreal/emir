@@ -124,7 +124,7 @@ class Feed_forward(torch.nn.Module):
             x = self.out_layer(x)
 
         if self.task == "regression":
-            x = x * self.out_train_std + self.out_train_mean
+            x = x + self.out_train_mean
         return x
 
     def train_epoch(self, dataloader_train):

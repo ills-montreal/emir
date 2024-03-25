@@ -26,6 +26,7 @@ if __name__ == "__main__":
             "Lipophilicity_AstraZeneca",
             "Solubility_AqSolDB",
             "PPBR_AZ",
+            "Skin__Reaction",
         ],
         help="the datasets to preprocess",
     )
