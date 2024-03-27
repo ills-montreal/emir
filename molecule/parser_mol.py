@@ -112,8 +112,16 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument("--fp-length", type=int, default=1024)
-    parser.add_argument("--mds-dim", type=int, default=0)
     parser.add_argument("--n-jobs", type=int, default=1)
+
+    parser.add_argument("--use-VAE-embs", action="store_true")
+    parser.add_argument("--no-VAE-embs", dest="use_VAE_embs", action="store_false")
+    parser.set_defaults(use_VAE_embs=True)
+
+    parser.add_argument("--vae-latent-dim", type=int, default=64)
+    parser.add_argument("--vae-int-dim", type=int, default=128)
+    parser.add_argument("--vae-n-layers", type=int, default=1)
+
     return parser
 
 

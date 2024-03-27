@@ -1,7 +1,7 @@
 import os
 import sys
 
-sys.path.insert(0,os.path.join(os.path.dirname(__file__),".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import logging
 
@@ -30,7 +30,7 @@ GROUPED_MODELS = {
         "GraphLog",
         "GraphCL",
         "InfoGraph",
-        "Not-trained"
+        "Not-trained",
     ],
     "BERT": [
         "MolBert",
@@ -62,6 +62,28 @@ GROUPED_MODELS = {
     ],
     "ThreeD": [
         "ThreeDInfomax",
+    ],
+    "Descriptors": [
+        "usrcat",
+        "electroshape",
+        "usr",
+        "ecfp",
+        "estate",
+        "erg",
+        "rdkit",
+        "topological",
+        "avalon",
+        "maccs",
+        "secfp",
+        "fcfp",
+        "scaffoldkeys",
+        "cats",
+        "default",
+        "gobbi",
+        "pmapper",
+        "cats/3D",
+        "gobbi/3D",
+        "pmapper/3D",
     ],
 }
 
@@ -98,8 +120,16 @@ def main():
             new_models += GROUPED_MODELS[models]
     args.models = new_models
 
+    new_descriptors = []
+    for desc in args.descriptors:
+        if not desc in GROUPED_MODELS:
+            new_descriptors.append(desc)
+        else:
+            new_descriptors += GROUPED_MODELS[desc]
+    args.descriptors = new_descriptors
+
     args.out_dir = os.path.join(
-        args.out_dir, args.dataset, str(args.fp_length), str(args.mds_dim)
+        args.out_dir, args.dataset, str(args.fp_length), f"{str(args.use_VAE_embs)}_{args.vae_latent_dim}"
     )
     os.makedirs(args.out_dir, exist_ok=True)
 
@@ -119,7 +149,6 @@ def main():
         mols = dm.read_sdf(f"data/{args.dataset}/preprocessed.sdf")
     else:
         mols = None
-
 
     all_results = compute_all_mi(
         args=args,

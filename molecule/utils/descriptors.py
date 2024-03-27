@@ -5,7 +5,7 @@ DESCRIPTORS = [
     "usrcat",
     "electroshape",
     "usr",
-    "ecfp-count",
+    #"ecfp-count",
     "ecfp",
     "estate",
     "erg",

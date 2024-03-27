@@ -127,7 +127,7 @@ def get_knife_marg_kernel(
         index=False,
     )
 
-    with open(os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key)), "wb") as f:
+    with open(os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key.replace('/','_'))), "wb") as f:
         pickle.dump(knife_estimator.knife.kernel_marg.to("cpu"), f)
 
     return {emb_key: knife_estimator.knife.kernel_marg.to("cpu")}
@@ -268,7 +268,8 @@ def compute_all_mi(
         device=args.device,
         length=args.fp_length,
         dataset=args.dataset,
-        mds_dim=args.mds_dim,
+        use_vae=args.use_VAE_embs,
+        vae_path=f"data/{args.dataset}/VAE/latent_dim_{args.vae_latent_dim}/n_layers_{args.vae_n_layers}/intermediate_dim_{args.vae_int_dim}",
     )
 
     embeddings_fn = get_embedders(
