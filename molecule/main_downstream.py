@@ -122,13 +122,14 @@ def preprocess_smiles(s):
 
 
 def get_split_idx(
-    dataset: str,
+    data_path: str,
     split: Dict[str, pd.DataFrame],
 ):
-    with open(f"data/{dataset}/smiles.json", "r") as f:
+    with open(os.path.join(path, "smiles.json"), "r") as f:
         smiles = json.load(f)
-    if os.path.exists(f"data/{dataset}/preprocessed.sdf"):
-        mols = dm.read_sdf(f"data/{dataset}/preprocessed.sdf")
+    mol_path = os.path.join(path, "preprocessed.sdf")
+    if os.path.exists(mol_path):
+        mols = dm.read_sdf(mol_path)
     else:
         mols = dm.to_mol(smiles)
 
@@ -253,6 +254,7 @@ def main(args):
     final_res = []
 
     for dataset in args.datasets:
+        data_path = os.path.join(args.data_path, dataset)
         if (
             not args.test_run
         ):  # If we are not in test run, we use the config from the parser
@@ -288,10 +290,10 @@ def main(args):
 
             for i, embedder_name in enumerate(args.embedders):
                 for split in splits:
-                    split_idx, smiles, mols = get_split_idx(dataset, split)
+                    split_idx, smiles, mols = get_split_idx(data_path, split)
                     # Get all enmbedders
                     feature_extractor = MolecularFeatureExtractor(
-                        dataset=dataset, length=args.length, device=args.device
+                        dataset=dataset, length=args.length, device=args.device, data_dir = data_path
                     )
                     embedders = get_embedders(MODELS + DESCRIPTORS, feature_extractor)
 

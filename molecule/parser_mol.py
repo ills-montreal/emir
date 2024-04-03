@@ -12,42 +12,16 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     :param parser: argparse.ArgumentParser
     :return: argparse.ArgumentParser
     """
+    parser.add_argument("--data-path", type=str, default="data")
+
     parser.add_argument("--n-runs", type=int, default=1)
 
     parser.add_argument(
-        "--models",
+        "--X",
         type=str,
         nargs="+",
         default=[
-            "ContextPred",
-            "GPT-GNN",
-            "GraphMVP",
-            "GROVER",
-            # "EdgePred", # This model is especially bad and makes visualization hard
-            "AttributeMask",
-            "GraphLog",
-            "GraphCL",
-            "InfoGraph",
-            "Not-trained",
-            "MolBert",
-            "ChemBertMLM-5M",
-            "ChemBertMLM-10M",
-            "ChemBertMLM-77M",
-            "ChemBertMTR-5M",
-            "ChemBertMTR-10M",
-            "ChemBertMTR-77M",
-            "ChemGPT-1.2B",
-            "ChemGPT-19M",
-            "ChemGPT-4.7M",
-            "DenoisingPretrainingPQCMv4",
-            "FRAD_QM9",
-            "MolR_gat",
-            "MolR_gcn",
-            "MolR_tag",
-            "MoleOOD_OGB_GIN",
-            "MoleOOD_OGB_GCN",
-            "MoleOOD_OGB_SAGE",
-            "ThreeDInfomax",
+            "MolR"
         ],
         help="List of models to compare",
     )
@@ -60,39 +34,11 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     parser.set_defaults(compute_both_mi=False)
 
     parser.add_argument(
-        "--descriptors",
+        "--Y",
         type=str,
         nargs="+",
         default=[
-            "ContextPred",
-            "GPT-GNN",
-            "GraphMVP",
-            "GROVER",
-            # "EdgePred", # This model is especially bad and makes visualization hard
-            "AttributeMask",
-            "GraphLog",
-            "GraphCL",
-            "InfoGraph",
-            "Not-trained",
-            "MolBert",
-            "ChemBertMLM-5M",
-            "ChemBertMLM-10M",
-            "ChemBertMLM-77M",
-            "ChemBertMTR-5M",
-            "ChemBertMTR-10M",
-            "ChemBertMTR-77M",
-            "ChemGPT-1.2B",
-            "ChemGPT-19M",
-            "ChemGPT-4.7M",
-            "DenoisingPretrainingPQCMv4",
-            "FRAD_QM9",
-            "MolR_gat",
-            "MolR_gcn",
-            "MolR_tag",
-            "MoleOOD_OGB_GIN",
-            "MoleOOD_OGB_GCN",
-            "MoleOOD_OGB_SAGE",
-            "ThreeDInfomax",
+            "Denoising"
         ],
         help="List of descriptors to compare",
     )
@@ -118,9 +64,11 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     parser.add_argument("--no-VAE-embs", dest="use_VAE_embs", action="store_false")
     parser.set_defaults(use_VAE_embs=True)
 
-    parser.add_argument("--vae-latent-dim", type=int, default=64)
-    parser.add_argument("--vae-int-dim", type=int, default=128)
+    parser.add_argument("--vae-latent-dim", type=int, default=256)
+    parser.add_argument("--vae-int-dim", type=int, default=512)
     parser.add_argument("--vae-n-layers", type=int, default=1)
+
+    parser.add_argument("--name", type=str, default=None)
 
     return parser
 
@@ -134,7 +82,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--cond-modes", type=int, default=6)
     parser.add_argument("--marg-modes", type=int, default=6)
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--batch-size", type=int, default=8192)
+    parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--n-epochs", type=int, default=10)
     parser.add_argument("--n-epochs-marg", type=int, default=10)
@@ -207,6 +155,7 @@ def add_downstream_args(parser: argparse.ArgumentParser):
     :param parser:
     :return:
     """
+    parser.add_argument("--data-path", type=str, default="data")
     parser.add_argument("--datasets", type=str, nargs="+", default=["TOX", "ADME"])
     parser.add_argument("--length", type=int, default=1024)
     parser.add_argument(

@@ -21,6 +21,7 @@ class MolecularFeatureExtractor:
         normalize: bool = True,
         use_vae: bool = False,
         vae_path: str = "",
+        data_dir: str = "data",
     ):
         self.graph_input = None
         self.device = device
@@ -30,6 +31,7 @@ class MolecularFeatureExtractor:
         self.normalize = normalize
         self.use_vae = use_vae
         self.vae_path = vae_path
+        self.data_dir = os.path.join(data_dir, dataset)
         pass
 
     def get_features(
@@ -47,14 +49,20 @@ class MolecularFeatureExtractor:
 
         if feature_type == "descriptor":
             transformer_name = name.replace("/", "_")
-            if (not self.use_vae) or not os.path.exists(os.path.join(self.vae_path, f"{transformer_name}.npy")):
+            if (not self.use_vae) or not os.path.exists(
+                os.path.join(self.vae_path, f"{transformer_name}.npy")
+            ):
                 if self.use_vae:
-                    print("Loading normal embeddings as VAE does not exist")
+                    print(
+                        "Loading normal embeddings as VAE does not exist for {}".format(
+                            name
+                        )
+                    )
 
                 if name == "ScatteringWavelet":
-                    if os.path.exists(f"data/{dataset}/scattering_wavelet.npy"):
+                    if os.path.exists(f"{self.data_dir}/scattering_wavelet.npy"):
                         molecular_embedding = torch.tensor(
-                            np.load(f"data/{dataset}/scattering_wavelet.npy"),
+                            np.load(f"{self.data_dir}/scattering_wavelet.npy"),
                             device=device,
                         )
                         assert len(molecular_embedding) == len(
@@ -63,13 +71,12 @@ class MolecularFeatureExtractor:
                         return molecular_embedding
                     else:
                         raise ValueError(
-                            f"File data/{dataset}/scattering_wavelet.npy does not exist."
+                            f"File {self.data_dir}/scattering_wavelet.npy does not exist."
                         )
 
-
-                if os.path.exists(f"data/{dataset}/{transformer_name}_{length}.npy"):
+                if os.path.exists(f"{self.data_dir}/{transformer_name}_{length}.npy"):
                     molecular_embedding = np.load(
-                        f"data/{dataset}/{transformer_name}_{length}.npy"
+                        f"{self.data_dir}/{transformer_name}_{length}.npy"
                     )
                     molecular_embedding = torch.tensor(
                         molecular_embedding,
@@ -80,22 +87,22 @@ class MolecularFeatureExtractor:
                     ), "The number of smiles and the number of embeddings are not the same."
                 else:
                     raise ValueError(
-                        f"File data/{dataset}/{transformer_name}_{length}.npy does not exist."
+                        f"File {self.data_dir}/{transformer_name}_{length}.npy does not exist."
                     )
             else:
                 molecular_embedding = torch.tensor(
-                    np.load(os.path.join(self.vae_path, f"{transformer_name}.npy")), device=device
+                    np.load(os.path.join(self.vae_path, f"{transformer_name}.npy")),
+                    device=device,
                 )
                 assert len(molecular_embedding) == len(
                     smiles
                 ), "The number of smiles and the number of embeddings are not the same."
             return molecular_embedding
 
-
         if feature_type == "model":
-            if os.path.exists(f"data/{dataset}/{name}.npy"):
+            if os.path.exists(f"{self.data_dir}/{name}.npy"):
                 molecular_embedding = torch.tensor(
-                    np.load(f"data/{dataset}/{name}.npy"), device=device
+                    np.load(f"{self.data_dir}/{name}.npy"), device=device
                 )
             else:
                 molecular_embedding = ModelFactory(name)(
@@ -106,7 +113,7 @@ class MolecularFeatureExtractor:
                     device=device,
                     dataset=dataset,
                 )
-                np.save(f"data/{dataset}/{name}.npy", molecular_embedding.cpu().numpy())
+                np.save(f"{self.data_dir}/{name}.npy", molecular_embedding.cpu().numpy())
 
             if normalize:
                 molecular_embedding = (

@@ -9,8 +9,7 @@ import json
 from molecule.external_repo.MoleOOD.OGB.modules.ChemistryProcess import get_substructure
 
 
-def get_result_dir(dataset):
-    work_dir = "data/{}".format(dataset)
+def get_result_dir(work_dir):
     result_dir = os.path.join(work_dir, "moleood")
     if not os.path.exists(result_dir):
         os.makedirs(result_dir)
@@ -42,18 +41,26 @@ if __name__ == "__main__":
         default="brics",
         help="the method to decompose the molecule, brics or recap",
     )
+    parser.add_argument(
+        "--data-path",
+        type=str,
+        default="data",
+        help="Path to the data folder",
+    )
+
     args = parser.parse_args()
     print(args)
     for dataset in args.datasets:
-        if os.path.exists(f"data/{dataset}/moleood/substructures.pkl"):
+        data_path = os.path.join(args.data_path, dataset)
+        if os.path.exists(f"{data_path}/moleood/substructures.pkl"):
             print(f"Dataset {dataset} already preprocessed, skipping")
             continue
-        if os.path.exists(f"data/{dataset}/smiles.json"):
-            result_dir = get_result_dir(dataset)
+        if os.path.exists(f"{data_path}/smiles.json"):
+            result_dir = get_result_dir(data_path)
             if not os.path.exists(result_dir):
                 os.mkdir(result_dir)
 
-            with open(f"data/{dataset}/smiles.json", "r") as f:
+            with open(f"{data_path}/smiles.json", "r") as f:
                 smiles = json.load(f)
 
             file_name = (

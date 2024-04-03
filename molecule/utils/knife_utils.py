@@ -93,12 +93,12 @@ def get_knife_marg_kernel(
     mols: List[dm.Mol] = None,
     args: argparse.Namespace = None,
 ) -> Dict[str, torch.nn.Module]:
-
     if os.path.exists(os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key))):
-        with open(os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key)), "rb") as f:
+        with open(
+            os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key)), "rb"
+        ) as f:
             marginal_kernel = pickle.load(f)
         return {emb_key: marginal_kernel}
-
 
     x = embeddings_fn[emb_key](smiles, mols=mols).to("cpu")
     if (x == 0).logical_or(x == 1).all():
@@ -127,7 +127,10 @@ def get_knife_marg_kernel(
         index=False,
     )
 
-    with open(os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key.replace('/','_'))), "wb") as f:
+    with open(
+        os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key.replace("/", "_"))),
+        "wb",
+    ) as f:
         pickle.dump(knife_estimator.knife.kernel_marg.to("cpu"), f)
 
     return {emb_key: knife_estimator.knife.kernel_marg.to("cpu")}
@@ -154,43 +157,32 @@ def model_profile(
         "I(Y->X)": [],
         "Y_dim": [],
         "X_dim": [],
-        "is_desc_discrete": [],
     }
-    model_name, desc = x_y
-    model_embedding = embeddings_fn[model_name](smiles, mols=mols).to(
-        knife_config.device
-    ).to("cpu")
+    X_name, Y_name = x_y
+    X = embeddings_fn[X_name](smiles, mols=mols).to(knife_config.device).to("cpu")
+    Y = embeddings_fn[Y_name](smiles, mols=mols).to(knife_config.device).to("cpu")
+
     df_losses_XY = []
     df_losses_YX = []
-
     mis = []
-    descriptors_embedding = embeddings_fn[desc](smiles, mols=mols).to(
-        knife_config.device
-    ).to("cpu")
 
     for i in range(args.n_runs):
         mi, m, c, loss, marg_ent, cond_ent, kernel_marg = get_knife_preds(
-            descriptors_embedding,
-            model_embedding,
+            X,
+            Y,
             knife_config=knife_config,
-            kernel_marg=marginal_kernels.get(model_name, None),
+            kernel_marg=marginal_kernels.get(Y_name, None),
         )
-        if model_name not in marginal_kernels:
-            marginal_kernels[model_name] = kernel_marg
+        if Y_name not in marginal_kernels:
+            marginal_kernels[Y_name] = kernel_marg
 
-        results["Y"].append(model_name)
-        results["X"].append(desc + str(args.fp_length))
+        results["Y"].append(Y_name)
+        results["X"].append(X_name)
         results["I(Y)"].append(m)
         results["I(Y|X)"].append(c)
         results["I(X->Y)"].append(mi)
-        results["Y_dim"].append(model_embedding.shape[1])
-        results["X_dim"].append(descriptors_embedding.shape[1])
-        results["is_desc_discrete"].append(
-            (descriptors_embedding == 0)
-            .logical_or(descriptors_embedding == 1)
-            .all()
-            .item()
-        )
+        results["Y_dim"].append(Y.shape[1])
+        results["X_dim"].append(X.shape[1])
 
         # saving the loss evolution in losses as csvs
         df_losses_XY.append(
@@ -199,22 +191,22 @@ def model_profile(
                     "cond_ent": cond_ent.cpu().numpy(),
                     "epoch": np.linspace(0, args.n_epochs, len(cond_ent)),
                     "run": i,
-                    "X": desc.replace("/", "_"),
-                    "Y": model_name.replace("/", "_"),
+                    "X": X_name.replace("/", "_"),
+                    "Y": Y_name.replace("/", "_"),
                     "direction": "X->Y",
                 }
             )
         )
         if args.compute_both_mi:
             mi, m, c, loss, marg_ent, cond_ent, kernel_marg = get_knife_preds(
-                model_embedding,
-                descriptors_embedding,
+                Y,
+                X,
                 knife_config=knife_config,
-                kernel_marg=marginal_kernels.get(desc, None),
+                kernel_marg=marginal_kernels.get(X_name, None),
             )
 
-            if desc not in marginal_kernels:
-                marginal_kernels[desc] = kernel_marg
+            if X_name not in marginal_kernels:
+                marginal_kernels[X_name] = kernel_marg
             results["I(X)"].append(m)
             results["I(X|Y)"].append(c)
             results["I(Y->X)"].append(mi)
@@ -224,8 +216,8 @@ def model_profile(
                         "cond_ent": cond_ent.cpu().numpy(),
                         "epoch": np.linspace(0, args.n_epochs, len(cond_ent)),
                         "run": i,
-                        "X": desc.replace("/", "_"),
-                        "Y": model_name.replace("/", "_"),
+                        "X": X_name.replace("/", "_"),
+                        "Y": Y_name.replace("/", "_"),
                         "direction": "Y->X",
                     }
                 )
@@ -238,8 +230,8 @@ def model_profile(
 
         if p_bar is not None:
             p_bar.update(1)
-    del descriptors_embedding
-    del model_embedding
+    del Y
+    del X
 
     if df_losses_XY != []:
         df_losses_XY = pd.concat(df_losses_XY)
@@ -251,7 +243,7 @@ def model_profile(
         df_losses_YX = None
     results = pd.DataFrame(results)
 
-    return (model_name, (results, df_losses_XY, df_losses_YX))
+    return (X_name, (results, df_losses_XY, df_losses_YX))
 
 
 def compute_all_mi(
@@ -269,12 +261,18 @@ def compute_all_mi(
         length=args.fp_length,
         dataset=args.dataset,
         use_vae=args.use_VAE_embs,
-        vae_path=f"data/{args.dataset}/VAE/latent_dim_{args.vae_latent_dim}/n_layers_{args.vae_n_layers}/intermediate_dim_{args.vae_int_dim}",
+        vae_path=os.path.join(
+            args.data_path,
+            args.dataset,
+            "VAE",
+            f"latent_dim_{args.vae_latent_dim}",
+            f"n_layers_{args.vae_n_layers}",
+            f"intermediate_dim_{args.vae_int_dim}",
+        ),
+        data_dir=args.data_path,
     )
 
-    embeddings_fn = get_embedders(
-        list(set(args.descriptors + args.models)), feature_extractor
-    )
+    embeddings_fn = get_embedders(list(set(args.Y + args.X)), feature_extractor)
 
     marginal_fn = partial(
         get_knife_marg_kernel,
@@ -285,7 +283,7 @@ def compute_all_mi(
         args=args,
     )
 
-    all_embedders = args.descriptors + args.models
+    all_embedders = args.Y + args.X
     all_embedders = list(set(all_embedders))
 
     all_marginal_kernels = list(
@@ -308,7 +306,7 @@ def compute_all_mi(
         embeddings_fn=embeddings_fn,
         knife_config=knife_config,
     )
-    all_combinaisons = list(product(args.models, args.descriptors))
+    all_combinaisons = list(product(args.X, args.Y))
     results = list(
         tqdm(
             map(model_profile_partial, all_combinaisons),

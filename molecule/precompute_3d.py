@@ -14,7 +14,11 @@ import pathos.multiprocessing as mp
 def compute_3d(smiles: str):
     try:
         mol = dm.conformers.generate(
-            dm.to_mol(smiles), align_conformers=True, ignore_failure=True, num_threads=8, n_confs=5
+            dm.to_mol(smiles),
+            align_conformers=True,
+            ignore_failure=True,
+            num_threads=8,
+            n_confs=5,
         )
         return mol
     except Exception as e:
@@ -22,11 +26,14 @@ def compute_3d(smiles: str):
         return None
 
 
-
-
-def precompute_3d(smiles: List[str], dataset_name: str = "tox21", n_jobs: int = 4):
-    if os.path.exists(f"data/{dataset_name}_3d.sdf"):
-        mols = dm.read_sdf(f"data/{dataset_name}_3d.sdf")
+def precompute_3d(
+    smiles: List[str],
+    dataset_name: str = "tox21",
+    n_jobs: int = 4,
+    data_path: str = "data",
+) -> Tuple[List[dm.Mol], List[str]]:
+    if os.path.exists(f"{data_path}/{dataset_name}_3d.sdf"):
+        mols = dm.read_sdf(f"{data_path}/{dataset_name}_3d.sdf")
         smiles = [dm.to_smiles(m, True, False) for m in mols]
         return mols, smiles
 
@@ -37,7 +44,7 @@ def precompute_3d(smiles: List[str], dataset_name: str = "tox21", n_jobs: int = 
                 mols.append(mol)
 
     smiles = [dm.to_smiles(m, True, False) for m in mols]
-    dm.to_sdf(mols, f"data/{dataset_name}_3d.sdf")
+    dm.to_sdf(mols, f"{data_path}/{dataset_name}_3d.sdf")
 
     return mols, smiles
 
@@ -60,6 +67,7 @@ parser.add_argument(
     required=False,
     help="Number of jobs to use",
 )
+parser.add_argument("--data-path", type=str, default="data")
 
 if __name__ == "__main__":
     args = parser.parse_args()

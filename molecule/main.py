@@ -11,13 +11,14 @@ import json
 import datamol as dm
 import pandas as pd
 import wandb
-
+import yaml
 
 from molecule.utils.knife_utils import compute_all_mi
 from molecule.parser_mol import (
     add_eval_cli_args,
     add_knife_args,
 )
+
 
 GROUPED_MODELS = {
     "GNN": [
@@ -112,41 +113,53 @@ def main():
     parser = add_knife_args(parser)
     args = parser.parse_args()
 
-    new_models = []
-    for models in args.models:
-        if not models in GROUPED_MODELS:
-            new_models.append(models)
+    new_X = []
+    for embedder in args.X:
+        if not embedder in GROUPED_MODELS:
+            new_X.append(embedder)
         else:
-            new_models += GROUPED_MODELS[models]
-    args.models = new_models
+            new_X += GROUPED_MODELS[embedder]
+    args.X = new_X
 
-    new_descriptors = []
-    for desc in args.descriptors:
-        if not desc in GROUPED_MODELS:
-            new_descriptors.append(desc)
+    new_Y = []
+    for embedder in args.Y:
+        if not embedder in GROUPED_MODELS:
+            new_Y.append(embedder)
         else:
-            new_descriptors += GROUPED_MODELS[desc]
-    args.descriptors = new_descriptors
+            new_Y += GROUPED_MODELS[embedder]
+    args.Y = new_Y
+
+    dir_key = "tmp" if args.name is None else args.name
 
     args.out_dir = os.path.join(
-        args.out_dir, args.dataset, str(args.fp_length), f"{str(args.use_VAE_embs)}_{args.vae_latent_dim}"
+        args.out_dir,
+        args.dataset,
+        str(args.fp_length),
+        f"{str(args.use_VAE_embs)}_{args.vae_latent_dim}",
+        dir_key,
     )
+
     os.makedirs(args.out_dir, exist_ok=True)
+
+    with open(os.path.join(args.out_dir, "args.yaml"), "w") as f:
+        yaml.dump(vars(args), f)
 
     os.makedirs(os.path.join(args.out_dir, "losses"), exist_ok=True)
     logger.info(f"Saving results in {args.out_dir}")
 
     # Update the wandb config with the args specified in the command line
     wandb.config.update(args)
+    smiles_path = f"{args.data_path}/{args.dataset}/smiles.json"
+    mol_path = f"{args.data_path}/{args.dataset}/preprocessed.sdf"
 
     assert os.path.exists(
-        f"data/{args.dataset}/smiles.json"
+        smiles_path
     ), "Please run precompute_molf_descriptors.py first."
 
-    with open(f"data/{args.dataset}/smiles.json", "r") as f:
+    with open(smiles_path, "r") as f:
         smiles = json.load(f)
-    if os.path.exists(f"data/{args.dataset}/preprocessed.sdf"):
-        mols = dm.read_sdf(f"data/{args.dataset}/preprocessed.sdf")
+    if os.path.exists(mol_path):
+        mols = dm.read_sdf(mol_path)
     else:
         mols = None
 

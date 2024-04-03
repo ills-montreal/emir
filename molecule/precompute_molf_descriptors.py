@@ -38,12 +38,21 @@ parser.add_argument(
     help="List of descriptors to compute",
 )
 
+parser.add_argument(
+    "--data-path",
+    type=str,
+    default="data",
+    required=False,
+    help="Path to the data folder",
+)
 
 def main():
     args = parser.parse_args()
     for dataset in args.datasets:
-        if not os.path.exists(f"data/{dataset}/preprocessed.sdf"):
-            if os.path.exists(f"data/{dataset}_3d.sdf"):
+        data_path = os.path.join(args.data_path, dataset)
+
+        if not os.path.exists(f"{data_path}/preprocessed.sdf"):
+            if os.path.exists(f"{data_path}_3d.sdf"):
                 print(f"Loading 3D conformers from data/{dataset}_3d.sdf")
                 mols, smiles = precompute_3d(None, dataset)
             else:
@@ -75,20 +84,20 @@ def main():
 
             smiles = valid_smiles
             mols = valid_mols
-            if not os.path.exists(f"data/{dataset}"):
-                os.makedirs(f"data/{dataset}")
+            if not os.path.exists(f"{data_path}"):
+                os.makedirs(f"{data_path}")
 
             pre_processed = pd.DataFrame({"smiles": smiles, "mols": mols})
             dm.to_sdf(
-                pre_processed, f"data/{dataset}/preprocessed.sdf", mol_column="mols"
+                pre_processed, f"{data_path}/preprocessed.sdf", mol_column="mols"
             )
             # save the SMILES in a json file
-            with open(f"data/{dataset}/smiles.json", "w") as f:
+            with open(f"{data_path}/smiles.json", "w") as f:
                 json.dump(smiles, f)
 
         else:
             pre_processed = dm.read_sdf(
-                f"data/{dataset}/preprocessed.sdf", as_df=True, mol_column="mols"
+                f"{data_path}/preprocessed.sdf", as_df=True, mol_column="mols"
             )
             smiles = pre_processed["smiles"].iloc[:, 0].tolist()
             mols = pre_processed["mols"].tolist()
@@ -100,19 +109,20 @@ def main():
                     length=length,
                     dataset=dataset,
                     mds_dim=0,
+                    data_dir=data_path,
                 )
-                if not os.path.exists(f"data/{dataset}/{desc}_{length}.npy"):
+                if not os.path.exists(f"{data_path}/{desc}_{length}.npy"):
                     descriptor = feature_extractor.get_features(
                         smiles, name=desc, mols=mols, feature_type="descriptor"
                     ).numpy()
 
                     np.save(
-                        f"data/{dataset}/{desc.replace('/','_')}_{length}.npy",
+                        f"{data_path}/{desc.replace('/','_')}_{length}.npy",
                         descriptor,
                     )
                     del descriptor
                 else:
-                    print(f"data/{dataset}/{desc}_{length}.npy already exists")
+                    print(f"{data_path}/{desc}_{length}.npy already exists")
 
 
 if __name__ == "__main__":
