@@ -107,6 +107,8 @@ class KNIFEEstimator:
             precomputed_marg_kernel=self.precomputed_marg_kernel,
         ).to(self.args.device)
 
+        self.knife = torch.compile(self.knife)
+
         self.fit_estimator(x, y, fit_only_marginal=fit_only_marginal)
 
         with torch.no_grad():
