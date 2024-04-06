@@ -9,6 +9,8 @@ import torch
 import wandb
 import gc
 
+from tqdm import tqdm
+
 from emir.estimators.knife_estimator import KNIFEEstimator, KNIFEArgs
 
 
@@ -44,8 +46,8 @@ def parse_args():
 
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--margin_lr", type=float, default=0.1)
-    parser.add_argument("--average", type=str, default="")
-    parser.add_argument("--cov_diagonal", type=str, default="")
+    parser.add_argument("--average", type=str, default="var")
+    parser.add_argument("--cov_diagonal", type=str, default="var")
     parser.add_argument("--cov_off_diagonal", type=str, default="")
     parser.add_argument("--optimize_mu", default=False, action="store_true")
 
@@ -203,7 +205,7 @@ def main():
         return
 
     # eval X, Y
-    for model_X_path in model_X_paths:
+    for model_X_path in tqdm(model_X_paths):
         try:
             embeddings_X = load_embeddings(
                 embeddings_paths, model_X_path, args.normalize_embeddings

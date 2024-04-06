@@ -14,7 +14,7 @@ for model_Y in  izhx/udever-bloom-560m sentence-transformers/all-MiniLM-L6-v2 ji
       --no-requeue \
       --cpus-per-task=10 \
       --hint=nomultithread \
-      --time=5:00:00 \
+      --time=15:00:00 \
       --output=jobinfo_mis/testlib%j.out \
       --error=jobinfo_mis/testlib%j.err \
       --wrap="module purge; module load pytorch-gpu/py3/2.1.1;
@@ -28,7 +28,7 @@ for model_Y in  izhx/udever-bloom-560m sentence-transformers/all-MiniLM-L6-v2 ji
         --embeddings_dir ${embeddings_dir} \
         --log_dir ${log_dir} \
         --device cuda \
-        --batch_size 64  \
+        --batch_size 128  \
         --cond_modes 8 \
         --marg_modes 8 \
         --ff_layers 2 \

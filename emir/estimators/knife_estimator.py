@@ -14,16 +14,18 @@ logger.setLevel(logging.DEBUG)
 
 @dataclass(frozen=True)
 class KNIFEArgs:
-    batch_size: int = 4096
-    eval_batch_size: int = 4096
-    lr: float = 0.001
+    batch_size: int = 64
+    eval_batch_size: int = 1024
+    lr: float = 1e-3
+    margin_lr: float = 1e-3
+
     device: str = "cpu"
 
     stopping_criterion: Literal[
         "max_epochs", "early_stopping"
     ] = "max_epochs"  # "max_epochs" or "early_stopping"
     n_epochs: int = 10
-    n_epochs_marg: int = 10
+    n_epochs_marg: int = 5
     eps: float = 1e-3
     n_epochs_stop: int = 1
     average: str = "var"
@@ -40,7 +42,6 @@ class KNIFEArgs:
     ff_layer_norm: bool = True
     ff_layers: int = 2
     ff_dim_hidden: Optional[int] = 0
-    margin_lr: float = 1e-3
 
 
 class KNIFEEstimator:
@@ -68,6 +69,7 @@ class KNIFEEstimator:
         self.precomputed_marg_kernel = precomputed_marg_kernel
 
         self.knife = None
+        self.kernel_type = None
 
     def eval(
         self,
@@ -121,6 +123,7 @@ class KNIFEEstimator:
         :param x: torch.Tensor
         :param y: torch.Tensor
         :return: Tuple[float, float, float] mutual information, marginal entropy H(X), conditional entropy H(X|Y)
+        :param per_samples: If True, return the mutual information per sample
         """
 
         eval_loader = FastTensorDataLoader(x, y, batch_size=self.args.batch_size)
@@ -129,8 +132,8 @@ class KNIFEEstimator:
         with torch.no_grad():
             for x_batch, y_batch in tqdm(eval_loader, desc="Evaluating", position=-1):
                 with torch.no_grad():
-                    x_batch = x_batch.to(self.args.device)
-                    y_batch = y_batch.to(self.args.device)
+                    x_batch = x_batch.to(self.args.device, non_blocking=True)
+                    y_batch = y_batch.to(self.args.device, non_blocking=True)
                     mutual_information, marg_ent, cond_ent = self.knife.forward_samples(
                         x_batch.to(self.args.device), y_batch.to(self.args.device)
                     )
@@ -212,7 +215,7 @@ class KNIFEEstimator:
             optimizer = torch.optim.Adam(
                 self.knife.kernel_marg.parameters(), lr=self.args.margin_lr
             )
-            for epoch in trange(self.args.n_epochs_marg):
+            for _ in trange(self.args.n_epochs_marg):
                 epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_marginal(
                     train_loader, optimizer
                 )
@@ -259,16 +262,20 @@ class KNIFEEstimator:
         epoch_marg_ent = []
         epoch_cond_ent = []
         for _, y_batch in train_loader:
-            y_batch = y_batch.to(self.args.device)
+            y_batch = y_batch.to(self.args.device, non_blocking=True)
             optimizer.zero_grad()
             loss = self.knife.kernel_marg(y_batch)
             marg_ent = loss
             cond_ent = 0
             loss.backward()
             optimizer.step()
-            epoch_loss.append(loss.item())
-            epoch_marg_ent.append(marg_ent.item())
+            epoch_loss.append(loss)
+            epoch_marg_ent.append(marg_ent)
             epoch_cond_ent.append(cond_ent)
+
+        # make item
+        epoch_loss = [x.item() for x in epoch_loss]
+        epoch_marg_ent = [x.item() for x in epoch_marg_ent]
         return epoch_loss, epoch_marg_ent, epoch_cond_ent
 
     def fit_conditional(
@@ -288,9 +295,14 @@ class KNIFEEstimator:
             marg_ent = 0
             loss.backward()
             optimizer.step()
-            epoch_loss.append(loss.item())
+            epoch_loss.append(loss)
             epoch_marg_ent.append(marg_ent)
-            epoch_cond_ent.append(cond_ent.item())
+            epoch_cond_ent.append(cond_ent)
+
+        # make item
+        epoch_loss = [x.item() for x in epoch_loss]
+        epoch_cond_ent = [x.item() for x in epoch_cond_ent]
+
         return epoch_loss, epoch_marg_ent, epoch_cond_ent
 
 
