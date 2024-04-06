@@ -175,6 +175,8 @@ def main():
             model_Y_path, model_X_paths, args.dataset_filter
         )
 
+    print(f"Embeddings paths: {embeddings_paths}, len: {len(embeddings_paths)}")
+
     if embeddings_paths is None:
         return
 

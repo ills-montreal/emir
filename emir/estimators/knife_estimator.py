@@ -28,16 +28,9 @@ class KNIFEArgs:
     n_epochs_stop: int = 1
     average: str = "var"
     cov_diagonal: str = "var"
-    cov_off_diagonal: str = "var"
+    cov_off_diagonal: str = ""
+
     optimize_mu: bool = False
-    simu_params: List[str] = field(
-        default_factory=lambda: [
-            "source_data",
-            "target_data",
-            "method",
-            "optimize_mu",
-        ]
-    )
     cond_modes: int = 8
     marg_modes: int = 8
     use_tanh: bool = True
@@ -74,11 +67,12 @@ class KNIFEEstimator:
         self.early_stop_iter = 0
         self.precomputed_marg_kernel = precomputed_marg_kernel
 
+        self.knife = None
+
     def eval(
         self,
         x: torch.torch.Tensor,
         y: torch.torch.Tensor,
-        record_loss: Optional[bool] = False,
         fit_only_marginal: Optional[bool] = False,
     ) -> Tuple[float, float, float]:
         """
@@ -87,7 +81,14 @@ class KNIFEEstimator:
         :param x: torch.Tensor
         :param y: torch.Tensor
         :return: Tuple[float, float, float] mutual information, marginal entropy H(X), conditional entropy H(X|Y)
+        :param fit_only_marginal:  If True, only the marginal kernel is fitted (requires precomputed_marg_kernel)
         """
+
+        # Some sanity checks
+        if x.shape[0] != y.shape[0]:
+            raise ValueError("x and y must have the same number of samples")
+        if fit_only_marginal and self.precomputed_marg_kernel is None:
+            raise ValueError("fit_only_marginal requires precomputed_marg_kernel")
 
         # Create model for MI estimation
         if (y == 0).logical_or(y == 1).all():
@@ -104,17 +105,16 @@ class KNIFEEstimator:
             precomputed_marg_kernel=self.precomputed_marg_kernel,
         ).to(self.args.device)
 
-        # Fit the model
-        self.fit_estimator(
-            x, y, record_loss=record_loss, fit_only_marginal=fit_only_marginal
-        )
+        self.fit_estimator(x, y, fit_only_marginal=fit_only_marginal)
 
         with torch.no_grad():
             mutual_information, marg_ent, cond_ent = self.batched_eval(x, y)
 
         return mutual_information.item(), marg_ent.item(), cond_ent.item()
 
-    def batched_eval(self, x, y):
+    def batched_eval(
+        self, x, y, per_samples=False
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Mutual information between x and y
 
@@ -139,9 +139,14 @@ class KNIFEEstimator:
                     h2h1.append(cond_ent)
 
         # average mi
-        mi = torch.cat(mi).mean()
-        h2 = torch.cat(h2).mean()
-        h2h1 = torch.cat(h2h1).mean()
+        if not per_samples:
+            mi = torch.cat(mi).mean()
+            h2 = torch.cat(h2).mean()
+            h2h1 = torch.cat(h2h1).mean()
+        else:
+            mi = torch.cat(mi)
+            h2 = torch.cat(h2)
+            h2h1 = torch.cat(h2h1)
 
         return mi, h2, h2h1
 
@@ -151,26 +156,15 @@ class KNIFEEstimator:
         y: torch.Tensor,
     ) -> Tuple[List[float], List[float], List[float]]:
         """
-        Mutual information between x and y
+        Mutual information between x and y. For back compatibility with the previous version.
 
         :param x: torch.Tensor
         :param y: torch.Tensor
-        :return: Tuple[float, float, float] mutual information, marginal entropy H(X), conditional entropy H(X|Y)
+        :return: Tuple[List[float], List[float], List[float]]: pmi, h2, h2h1
         """
 
-        eval_loader = FastTensorDataLoader(x, y, batch_size=self.args.batch_size)
-
-        mi, h2, h2h1 = [], [], []
-        with torch.no_grad():
-            for x_batch, y_batch in tqdm(eval_loader, desc="Evaluating", position=-1):
-                with torch.no_grad():
-                    mutual_information, marg_ent, cond_ent = self.knife.forward_samples(
-                        x_batch.to(self.args.device), y_batch.to(self.args.device)
-                    )
-                    # tolist , extend
-                    mi.extend(mutual_information.cpu().tolist())
-                    h2.extend(marg_ent.cpu().tolist())
-                    h2h1.extend(cond_ent.cpu().tolist())
+        mi, h2, h2h1 = self.batched_eval(x, y, per_samples=True)
+        mi, h2, h2h1 = mi.cpu().tolist(), h2.cpu().tolist(), h2h1.cpu().tolist()
 
         return mi, h2, h2h1
 
@@ -199,7 +193,6 @@ class KNIFEEstimator:
         self,
         x,
         y,
-        record_loss: Optional[bool] = False,
         fit_only_marginal: Optional[bool] = False,
     ) -> None:
         """
