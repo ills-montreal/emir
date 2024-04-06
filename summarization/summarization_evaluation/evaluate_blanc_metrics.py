@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from bert_score import BERTScorer
+from blanc import BlancHelp
 
 
 def sanitize_model_name(model_name: str) -> str:
@@ -55,21 +55,13 @@ def evaluate_bartbert(df, device="cuda"):
     texts = df.text.tolist()
     summaries = df.summary.tolist()
 
-    scorer = BERTScorer(lang="en", rescale_with_baseline=True, device=device)
+    scorer = BlancHelp(device="cuda", inference_batch_size=128, show_progress_bar=True)
 
-    metrics = {"BERTScore": [], "BERTScore Recall": [], "BERTScore Precision": []}
-    for i in range(len(texts)):
-        texts[i] = texts[i].replace("\n", " ")
-        summaries[i] = summaries[i].replace("\n", " ")
+    texts = [text.replace("\n", " ") for text in texts]
+    summaries = [summary.replace("\n", " ") for summary in summaries]
 
-        print(len(texts[i]))
-        print(len(summaries[i]))
-
-        P, R, F1 = scorer.score([summaries[i]], [texts[i]])
-
-        metrics["BERTScore"].append(F1.mean().item())
-        metrics["BERTScore Recall"].append(R.mean().item())
-        metrics["BERTScore Precision"].append(P.mean().item())
+    metrics = {"BLANC": []}
+    metrics["BLANC"] = scorer.eval_pairs(texts, summaries)
 
     # compute the mean of the metrics
     metrics = {k: sum(v) / len(v) for k, v in metrics.items()}

@@ -13,6 +13,9 @@ def parse_args():
         type=Path,
         help="Output file with packed classification results",
     )
+    parser.add_argument(
+        "--avg", action="store_true", help="Average the results", default=False
+    )
 
     return parser.parse_args()
 
@@ -38,9 +41,12 @@ def main():
             input_dir / f"classification_results_{idx}.csv"
         )
 
-        classification_results = (
-            classification_results["success"].agg(["mean"]).to_frame()
-        )
+        if args.avg:
+            classification_results = (
+                classification_results["success"].agg(["mean"]).to_frame()
+            )
+
+        classification_results = classification_results.drop("logits", axis=1)
 
         metadata["id"] = idx
         classification_results["id"] = idx

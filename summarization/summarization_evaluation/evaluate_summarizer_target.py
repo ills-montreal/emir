@@ -15,7 +15,7 @@ import re
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="paraphrase-MiniLM-L6-v2")
-    parser.add_argument("--summaries", type=Path, default="")
+    parser.add_argument("--summaries", type=Path, default="", nargs="+")
     parser.add_argument("--output", type=str)
 
     parser.add_argument("--batch_size", type=int, default=32)
@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument("--average", type=str, default="var")
     parser.add_argument("--cov_diagonal", type=str, default="var")
     parser.add_argument("--cov_off_diagonal", type=str, default="")
-    parser.add_argument("--optimize_mu", default=False, action="store_true")
+    parser.add_argument("--optimize_mu", default=True, action="store_true")
 
     parser.add_argument("--cond_modes", type=int, default=8)
     parser.add_argument("--marg_modes", type=int, default=8)
@@ -79,38 +79,6 @@ def embedd_sourcetexts_and_summaries(df, model) -> Tuple[torch.Tensor, torch.Ten
     return text_embeddings, summary_embeddings
 
 
-def compute_mi(
-    text_embeddings, summary_embeddings, device, args
-) -> Tuple[float, float, float]:
-    """
-    :param text_embeddings: a torch tensor of text embeddings
-    :param summary_embeddings: a torch tensor of summary embeddings
-    :param device: a string specifying the device to use
-    :param args: a namespace object with the arguments for the KNIFE estimator
-    :return: a torch tensor with the mutual information between the text and the summary
-    """
-
-    # clean args from argparse to fit KNIFEArgs: remove the arguments that are not in KNIFEArgs
-    args_dict = vars(args)
-    args_dict = {
-        key: value
-        for key, value in args_dict.items()
-        if key in KNIFEArgs.__annotations__
-    }
-
-    # initialize the KNIFE estimator
-    knife_estimator = KNIFEEstimator(
-        KNIFEArgs(**args_dict), text_embeddings.shape[1], summary_embeddings.shape[1]
-    )
-
-    # compute the mutual information
-    mi, marg_ent, cond_ent = knife_estimator.eval(
-        text_embeddings.to(device), summary_embeddings.to(device)
-    )
-
-    return mi, marg_ent, cond_ent
-
-
 def main():
     # set seeds
     torch.manual_seed(42)
@@ -118,56 +86,99 @@ def main():
 
     args = parse_args()
 
-    # check if the file exists already
-    # if it does stop the execution
-    path = Path(args.output) / f"{args.summaries.stem}_metrics.csv"
-    if path.exists():
-        raise ValueError("The file already exists.")
-    # load the model
     model = SentenceTransformer(args.model)
 
-    # parse the summaries
-    df = parse_summaries(args.summaries)
+    precomputed_marg_kernel = None
+    for k, summaries_path in enumerate(args.summaries):
+        df = parse_summaries(summaries_path)
+        text_embeddings, summary_embeddings = embedd_sourcetexts_and_summaries(
+            df, model
+        )
 
-    # embedd the text and the summary
-    text_embeddings, summary_embeddings = embedd_sourcetexts_and_summaries(df, model)
+        if precomputed_marg_kernel is None:
+            knife_args = KNIFEArgs(
+                **{
+                    k: v
+                    for k, v in vars(args).items()
+                    if k in KNIFEArgs.__annotations__
+                }
+            )
+            estimator = KNIFEEstimator(
+                knife_args,
+                text_embeddings.shape[1],
+                text_embeddings.shape[1],
+                precomputed_marg_kernel=None,
+            )
 
-    # compute the mutual information text -> summary
-    mi, marg_ent, cond_ent = compute_mi(
-        text_embeddings, summary_embeddings, args.device, args
+            estimator.eval(text_embeddings, text_embeddings, fit_only_marginal=True)
+
+            precomputed_marg_kernel = estimator.knife.kernel_marg
+
+        try:
+            evaluate_summarizer(
+                args,
+                summaries_path,
+                text_embeddings,
+                summary_embeddings,
+                args.device,
+                precomputed_marg_kernel,
+            )
+        except Exception as e:
+            print(e)
+            continue
+
+
+def evaluate_summarizer(
+    args,
+    summaries_path: Path,
+    text_embeddings,
+    summary_embeddings,
+    device,
+    precomputed_marg_kernel,
+):
+    path = Path(args.output) / f"{summaries_path.stem}_metrics.csv"
+    if path.exists():
+        raise ValueError("The file already exists.")
+
+    knife_args = KNIFEArgs(
+        **{k: v for k, v in vars(args).items() if k in KNIFEArgs.__annotations__}
     )
 
-    # compute reverse mi: summary -> text
-    mi_rev, marg_ent_rev, cond_ent_rev = compute_mi(
-        summary_embeddings, text_embeddings, args.device, args
+    torch.cuda.empty_cache()
+
+    estimator = KNIFEEstimator(
+        knife_args,
+        text_embeddings.shape[1],
+        summary_embeddings.shape[1],
+        precomputed_marg_kernel=precomputed_marg_kernel,
     )
 
-    # Retrive metadata from stem
-    # check if stem has form M[1-9]{0,2}
+    mi, marg_ent, cond_ent = estimator.eval(summary_embeddings, text_embeddings)
+    mi_rev, marg_ent_rev, cond_ent_rev = 0, 0, 0
 
-    if re.match(r"M[1-9]{0,2}", args.summaries.stem):
-        model_name = args.summaries.stem
+    if re.match(r"M[1-9]{0,2}", summaries_path.stem):
+        model_name = summaries_path.stem
         dataset_name, decoding_config, date = "SummEval", None, None
     else:
-        metadata = args.summaries.stem.split("-_-")
+        metadata = summaries_path.stem.split("-_-")
         model_name, dataset_name, decoding_config, date = metadata
 
     # make a pandas dataframe, use summaries filename as index
 
     df = pd.DataFrame(
         {
-            "filename": [args.summaries.stem],
+            "filename": [summaries_path.stem],
             "metadata/Embedding model": [args.model],
             "metadata/Decoding config": [decoding_config],
             "metadata/Date": [date],
             "metadata/Model name": [model_name],
             "metadata/Dataset name": [dataset_name],
-            "I(text -> summary)": [mi],
-            "H(summary)": [marg_ent],
-            "H(summary|text)": [cond_ent],
-            "I(summary -> text)": [mi_rev],
-            "H(text)": [marg_ent_rev],
-            "H(text|summary)": [cond_ent_rev],
+            "I(text -> summary)": [mi_rev],
+            "H(summary)": [marg_ent_rev],
+            "H(summary|text)": [cond_ent_rev],
+            "I(summary -> text)": [mi],
+            "H(text)": [marg_ent],
+            "H(text|summary)": [cond_ent],
         },
     )
 

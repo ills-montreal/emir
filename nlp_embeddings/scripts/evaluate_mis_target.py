@@ -7,6 +7,7 @@ from typing import List, Optional
 import pandas as pd
 import torch
 import wandb
+import gc
 
 from emir.estimators.knife_estimator import KNIFEEstimator, KNIFEArgs
 
@@ -59,6 +60,7 @@ def parse_args():
     parser.add_argument("--ff_dim_hidden", type=int, default=0)
 
     parser.add_argument("--normalize_embeddings", action="store_true", default=False)
+    parser.add_argument("--fixed_embeddings", action="store_true", default=False)
 
     return parser.parse_args()
 
@@ -69,11 +71,22 @@ def find_embedding_paths(
     dataset_filter: Optional[str] = None,
 ) -> List[str]:
     # get all paths to embeddings
+    N_ds = 12
+
     embeddings_1 = []
-    for path in model_1_path.rglob("*.npy"):
+    for path in model_1_path.rglob("*embeddings.npy"):
         if dataset_filter is None or re.search(dataset_filter, path.name):
             path = str(path)[len(str(model_1_path)) + 1 :]
             embeddings_1.append(path)
+
+    if len(embeddings_1) == 0:
+        print(f"No datasets found for {model_1_path}")
+        print(f"Ignore")
+        return
+
+    if len(embeddings_1) < N_ds:
+        print("Ignoring model 1 because of too few datasets")
+        return
 
     embeddings_2 = []
 
@@ -83,15 +96,27 @@ def find_embedding_paths(
             if dataset_filter is None or re.search(dataset_filter, path.name):
                 path = str(path)[len(str(model_2_path)) + 1 :]
                 _embeddings_2.append(path)
+
+        if len(_embeddings_2) == 0:
+            print(f"No datasets found for {model_2_path}")
+            print(f"Ignore")
+            continue
+        if len(embeddings_2) < N_ds:
+            print("Ignoring model 2 because of too few datasets")
+            continue
+
+        print(f"Found {len(_embeddings_2)} datasets for {model_2_path}")
         embeddings_2.append(_embeddings_2)
 
-    # make sure that the embeddings are in the same order and exists in both models
     print(embeddings_1)
     print(embeddings_2)
     common_datasets = set(embeddings_1).intersection(*embeddings_2)
 
     if len(common_datasets) == 0:
         raise ValueError("No common datasets found")
+    if len(common_datasets) < N_ds:
+        print("Ignoring because of too few common datasets")
+        return
 
     embedding_paths = list(common_datasets)
 
@@ -129,9 +154,29 @@ def main():
     model_Y_path = args.embeddings_dir / args.model_Y
     model_X_paths = [args.embeddings_dir / model for model in args.model_X]
 
-    embeddings_paths = find_embedding_paths(
-        model_Y_path, model_X_paths, args.dataset_filter
-    )
+    if args.fixed_embeddings:
+        embeddings_paths = {
+            "dennlinger/wiki-paragraphs/validation/embeddings.npy",
+            "mteb/amazon_polarity/test/embeddings.npy",
+            "mteb/banking77/test/embeddings.npy",
+            "mteb/biosses-sts/test/embeddings.npy",
+            "mteb/sickr-sts/test/embeddings.npy",
+            "mteb/sts12-sts/test/embeddings.npy",
+            "mteb/sts13-sts/test/embeddings.npy",
+            "mteb/sts14-sts/test/embeddings.npy",
+            "mteb/sts15-sts/test/embeddings.npy",
+            "mteb/stsbenchmark-sts/test/embeddings.npy",
+            "mteb/stsbenchmark-sts/validation/embeddings.npy",
+            "snli/test/embeddings.npy",
+            "snli/validation/embeddings.npy",
+        }
+    else:
+        embeddings_paths = find_embedding_paths(
+            model_Y_path, model_X_paths, args.dataset_filter
+        )
+
+    if embeddings_paths is None:
+        return
 
     embeddings_Y = load_embeddings(
         embeddings_paths, model_Y_path, args.normalize_embeddings
@@ -157,19 +202,31 @@ def main():
 
     # eval X, Y
     for model_X_path in model_X_paths:
-        embeddings_X = load_embeddings(
-            embeddings_paths, model_X_path, args.normalize_embeddings
-        ).to(device)
-        eval_mis_target(
-            embeddings_X,
-            embeddings_Y,
-            model_X_path,
-            model_Y_path,
-            embeddings_paths,
-            args,
-            knife_args,
-            precomputed_marg_kernel=estimator.knife.kernel_marg,
-        )
+        try:
+            embeddings_X = load_embeddings(
+                embeddings_paths, model_X_path, args.normalize_embeddings
+            )
+            eval_mis_target(
+                embeddings_X,
+                embeddings_Y,
+                model_X_path,
+                model_Y_path,
+                embeddings_paths,
+                args,
+                knife_args,
+                precomputed_marg_kernel=estimator.knife.kernel_marg,
+            )
+
+            del embeddings_X
+            gc.collect()
+            torch.cuda.empty_cache()
+
+        except Exception as e:
+            print(f"Error with {model_X_path}")
+            print(e)
+            gc.collect()
+            torch.cuda.empty_cache()
+            continue
 
 
 def eval_mis_target(
@@ -199,7 +256,7 @@ def eval_mis_target(
 
     mi, hY, hYX = estimator.eval(embeddings_X, embeddings_Y)
 
-    d_1 = embeddings_Y.shape[1]
+    d_1 = embeddings_X.shape[1]
     d_2 = embeddings_Y.shape[1]
 
     mi_sample, h2_sample, h2h1_sample = estimator.eval_per_sample(

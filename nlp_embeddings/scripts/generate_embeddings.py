@@ -1,17 +1,14 @@
+import argparse
+from pathlib import Path
+
+import torch
+from sentence_transformers import SentenceTransformer
+
 from emb_datasets import (
     load_emb_dataset,
     AVAILABLE_DATASETS,
-    TASKS_DATASET,
     load_emd_classif_dataset,
 )
-import argparse
-import torch
-import numpy as np
-
-from pathlib import Path
-from cache_models import SMALL_MODELS, LARGE_MODELS
-
-from sentence_transformers import SentenceTransformer
 
 
 def parse_args():
@@ -27,9 +24,6 @@ def parse_args():
     parser.add_argument("--model", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
-    )
 
     return parser.parse_args()
 
@@ -37,31 +31,51 @@ def parse_args():
 def main():
     args = parse_args()
 
+    print("START")
     if not args.classification_task:
+        print("CLASSIFICATION TASK")
+
+        print("LOADING EMBEDDINGS")
         dataset = load_emb_dataset(
             args.dataset, AVAILABLE_DATASETS[args.dataset], args.split
         )
+        print("EMBEDDINGS LOADED")
 
-        model = SentenceTransformer(args.model)
+        print("LOADING MODEL")
+        model = SentenceTransformer(
+            args.model,
+        )
+
+        model.tokenizer.pad_token = model.tokenizer.eos_token
+        print("MODEL LOADED")
 
         output_dir = Path(args.output_dir) / args.model / args.dataset / args.split
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        print("GENERATING EMBEDDINGS")
         embeddings = model.encode(
             dataset["text"],
             batch_size=args.batch_size,
             show_progress_bar=True,
             convert_to_numpy=True,
-            device=args.device,
         )
+        print("EMBEDDINGS GENERATED")
 
         with open(output_dir / "embeddings.npy", "wb") as f:
             torch.save(embeddings, f)
 
     else:
-        dataset, splits, metadata = load_emd_classif_dataset(args.dataset)
+        print("CLASSIFICATION TASK")
 
+        print("LOADING DATASET")
+        dataset, splits, metadata = load_emd_classif_dataset(args.dataset)
+        print("DATASET LOADED")
+
+        print("LOADING MODEL")
         model = SentenceTransformer(args.model)
+        print("MODEL LOADED")
+
+        model.tokenizer.pad_token = model.tokenizer.eos_token
 
         for split in splits:
             _output_dir = Path(args.output_dir) / args.model / args.dataset / split
@@ -71,7 +85,6 @@ def main():
                 batch_size=args.batch_size,
                 show_progress_bar=True,
                 convert_to_numpy=True,
-                device=args.device,
             )
             with open(_output_dir / "embeddings.npy", "wb") as f:
                 torch.save(embeddings, f)
@@ -81,4 +94,7 @@ def main():
 
 
 if __name__ == "__main__":
+    import sys
+
+    print(sys.version)
     main()
