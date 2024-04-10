@@ -30,5 +30,5 @@ cp -r /home/fransou/scratch/DATA/EMIR/backbone_pretrained_models ./
 export WANDB_MODE=offline
 
 echo "Running script on dataset $DATASET and model $MODELS"
-python main.py --dataset $DATASET --models $MODELS --out-dir /home/fransou/scratch/DATA/results --batch-size 512 --n-epochs 20 --n-epochs-marg 20 --ff-layers 1 --fp-length 0
+python main.py --dataset $DATASET --out-dir /home/fransou/scratch/DATA/results --X $MODELS
 cp -r wandb /home/fransou/scratch/DATA/results/wandb
