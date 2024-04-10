@@ -101,7 +101,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--stopping-criterion", type=str, default="early_stopping")
     parser.add_argument("--eps", type=float, default=1e-5)
     parser.add_argument("--n-epochs-stop", type=int, default=5)
-    parser.add_argument("--margin-lr", type=float, default=0.01)
+    parser.add_argument("--margin-lr", type=float, default=0.001)
     return parser
 
 

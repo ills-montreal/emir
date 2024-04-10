@@ -94,6 +94,7 @@ def get_knife_marg_kernel(
     args: argparse.Namespace = None,
 ) -> Dict[str, torch.nn.Module]:
     if os.path.exists(os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key))):
+        logger.info(f"Loading marginal kernel for {emb_key}")
         with open(
             os.path.join(args.out_dir, "marginal_{}.pkl".format(emb_key)), "rb"
         ) as f:
