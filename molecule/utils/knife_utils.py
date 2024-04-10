@@ -114,7 +114,7 @@ def get_knife_marg_kernel(
     df_run_marg_kernel = pd.DataFrame(
         {
             "marg_ent": marg_ent.cpu().numpy(),
-            "epoch": np.linspace(0, args.n_epochs, len(marg_ent)),
+            "epoch": np.linspace(0, args.n_epochs_marg, len(marg_ent)),
             "run": 0,
             "X": emb_key.replace("/", "_"),
         }
@@ -283,16 +283,16 @@ def compute_all_mi(
         args=args,
     )
 
-    all_embedders = args.Y + args.X
-    all_embedders = list(set(all_embedders))
+    all_embedders = list(set(args.Y + args.X))
+    np.random.shuffle(all_embedders)
 
     all_marginal_kernels = list(
         tqdm(map(marginal_fn, all_embedders), total=len(all_embedders))
     )
-
-    log_concatenated_tables_from_dir(
-        os.path.join(args.out_dir, "losses"), "marginals", ["_marg.csv"]
-    )
+    if args.wandb:
+        log_concatenated_tables_from_dir(
+            os.path.join(args.out_dir, "losses"), "marginals", ["_marg.csv"]
+        )
     logger.info("All marginal kernels computed")
     for marginal_kernel in all_marginal_kernels:
         marginal_kernels.update(marginal_kernel)

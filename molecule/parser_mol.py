@@ -1,5 +1,8 @@
+import os
 import argparse
 from emir.estimators import KNIFEArgs
+
+CLUSTER_PATH = "/export/livia/datasets/datasets/public/molecule/data"
 
 
 def add_eval_cli_args(parser: argparse.ArgumentParser):
@@ -9,10 +12,15 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         - The list of models to compare
         - The list of descriptors to compare
         - The dataset to use
+        - Other parameters for the evaluation
     :param parser: argparse.ArgumentParser
     :return: argparse.ArgumentParser
     """
-    parser.add_argument("--data-path", type=str, default="data")
+    parser.add_argument(
+        "--data-path",
+        type=str,
+        default=CLUSTER_PATH if os.path.exists(CLUSTER_PATH) else "data",
+    )
 
     parser.add_argument("--n-runs", type=int, default=1)
 
@@ -20,10 +28,16 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         "--X",
         type=str,
         nargs="+",
-        default=[
-            "MolR"
-        ],
+        default=["GNN", "BERT", "GPT", "Denoising", "ThreeD", "MolR", "MoleOOD"],
         help="List of models to compare",
+    )
+
+    parser.add_argument(
+        "--Y",
+        type=str,
+        nargs="+",
+        default=["GNN", "BERT", "GPT", "Denoising", "ThreeD", "MolR", "MoleOOD"],
+        help="List of descriptors to compare",
     )
 
     parser.add_argument(
@@ -32,16 +46,6 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
         help="Compute both MI(x1, x2) and MI(x2, x1)",
     )
     parser.set_defaults(compute_both_mi=False)
-
-    parser.add_argument(
-        "--Y",
-        type=str,
-        nargs="+",
-        default=[
-            "Denoising"
-        ],
-        help="List of descriptors to compare",
-    )
 
     parser.add_argument(
         "--dataset",
@@ -64,11 +68,12 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     parser.add_argument("--no-VAE-embs", dest="use_VAE_embs", action="store_false")
     parser.set_defaults(use_VAE_embs=True)
 
-    parser.add_argument("--vae-latent-dim", type=int, default=256)
-    parser.add_argument("--vae-int-dim", type=int, default=512)
-    parser.add_argument("--vae-n-layers", type=int, default=1)
+    parser.add_argument("--vae-latent-dim", type=int, default=64)
+    parser.add_argument("--vae-int-dim", type=int, default=128)
+    parser.add_argument("--vae-n-layers", type=int, default=2)
 
     parser.add_argument("--name", type=str, default=None)
+    parser.add_argument("--wandb" , action="store_true")
 
     return parser
 
@@ -79,24 +84,24 @@ def add_knife_args(parser: argparse.ArgumentParser):
     :param parser:
     :return:
     """
-    parser.add_argument("--cond-modes", type=int, default=6)
-    parser.add_argument("--marg-modes", type=int, default=6)
+    parser.add_argument("--cond-modes", type=int, default=4)
+    parser.add_argument("--marg-modes", type=int, default=4)
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=1024)
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--n-epochs", type=int, default=10)
-    parser.add_argument("--n-epochs-marg", type=int, default=10)
+    parser.add_argument("--n-epochs", type=int, default=50)
+    parser.add_argument("--n-epochs-marg", type=int, default=50)
     parser.add_argument("--ff-layers", type=int, default=2)
     parser.add_argument("--cov-diagonal", type=str, default="var")
     parser.add_argument("--cov-off-diagonal", type=str, default="")
     parser.add_argument("--optimize-mu", type=str, default="true")
     parser.add_argument("--ff-residual-connection", type=str, default="false")
-    parser.add_argument("--ff-hidden-dim", type=int, default=0)
+    parser.add_argument("--ff-hidden-dim", type=int, default=512)
     parser.add_argument("--use-tanh", type=str, default="true")
     parser.add_argument("--stopping-criterion", type=str, default="early_stopping")
     parser.add_argument("--eps", type=float, default=1e-5)
     parser.add_argument("--n-epochs-stop", type=int, default=5)
-    parser.add_argument("--margin-lr", type=float, default=0.001)
+    parser.add_argument("--margin-lr", type=float, default=0.01)
     return parser
 
 
@@ -155,7 +160,11 @@ def add_downstream_args(parser: argparse.ArgumentParser):
     :param parser:
     :return:
     """
-    parser.add_argument("--data-path", type=str, default="data")
+    parser.add_argument(
+        "--data-path",
+        type=str,
+        default=CLUSTER_PATH if os.path.exists(CLUSTER_PATH) else "data",
+    )
     parser.add_argument("--datasets", type=str, nargs="+", default=["TOX", "ADME"])
     parser.add_argument("--length", type=int, default=1024)
     parser.add_argument(

@@ -126,9 +126,10 @@ class AutoEncoder(nn.Module):
 
     def forward(self, x: torch.Tensor):
         z = self.encoder(x)
+        x_hat = self.decoder(z)
         if self.use_sigmoid:
-            return torch.sigmoid(self.decoder(z))
-        return torch.tanh(self.decoder(z)) * 3
+            return torch.sigmoid(x_hat)
+        return torch.tanh(x_hat) * 3
 
     def train_model(
         self,
@@ -221,5 +222,5 @@ class AutoEncoder(nn.Module):
         )
         embeddings = []
         for x in data:
-            embeddings.append(self.encoder.get_embedding(x[0]))
+            embeddings.append(self.encoder(x[0]))
         return torch.cat(embeddings)

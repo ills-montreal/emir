@@ -54,8 +54,8 @@ class MolecularFeatureExtractor:
             ):
                 if self.use_vae:
                     print(
-                        "Loading normal embeddings as VAE does not exist for {}".format(
-                            name
+                        "Loading normal embeddings as VAE does not exist for {}, missing path : {}".format(
+                            name, os.path.join(self.vae_path, f"{transformer_name}.npy")
                         )
                     )
 

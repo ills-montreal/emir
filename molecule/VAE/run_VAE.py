@@ -13,7 +13,7 @@ CLUSTER_PATH = "/export/livia/datasets/datasets/public/molecule/data"
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description="VAE")
+    parser = argparse.ArgumentParser(description="AE")
     parser.add_argument(
         "--descriptors",
         type=str,
@@ -26,10 +26,15 @@ def get_parser():
             "topological",
             "avalon",
             "maccs",
+            "atompair-count",
+            "topological-count",
+            "fcfp-count",
             "secfp",
+            "pattern",
             "fcfp",
             "scaffoldkeys",
             "cats",
+            "default",
             "gobbi",
             "pmapper",
             "cats/3D",
@@ -39,19 +44,18 @@ def get_parser():
         help="List of descriptors to compare",
     )
     parser.add_argument("--dataset", type=str, default="ClinTox", help="Dataset to use")
-    parser.add_argument("--out-dir", type=str, default="data", help="Output file")
     parser.add_argument("--length", type=int, default=1024, help="Input dimension")
     parser.add_argument(
-        "--intermediate-dim", type=int, default=512, help="Intermediate dimension"
+        "--intermediate-dim", type=int, default=-2, help="Intermediate dimension"
     )
-    parser.add_argument("--latent-dims", type=int, default=256, help="Latent dimension")
+    parser.add_argument("--latent-dims", type=int, default=128, help="Latent dimension")
     parser.add_argument("--batch-size", type=int, default=1024, help="Batch size")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
-    parser.add_argument("--epochs", type=int, default=500, help="Number of epochs")
+    parser.add_argument("--epochs", type=int, default=1000, help="Number of epochs")
     parser.add_argument("--n-layers", type=int, default=1, help="Number of layers")
     parser.add_argument("--dropout-rate", type=float, default=0, help="Dropout rate")
-    parser.add_argument("--norm", type=str, default="", help="Normalization")
-    parser.add_argument("--residual", type=bool, default=False, help="Residual")
+    parser.add_argument("--norm", type=str, default="batch", help="Normalization")
+    parser.add_argument("--residual", action="store_true", help="Residual connection")
 
     parser.add_argument("--pca", action="store_true", help="Plot PCA to the embeddings")
 
@@ -107,7 +111,7 @@ def main():
 
         vae = AutoEncoder(vae_config)
 
-        save_dir = f"{args.out_dir}/{args.dataset}/VAE/latent_dim_{args.latent_dims}/n_layers_{args.n_layers}/intermediate_dim_{args.intermediate_dim}"
+        save_dir = f"{args.data_path}/{args.dataset}/VAE/latent_dim_{args.latent_dims}/n_layers_{args.n_layers}/intermediate_dim_{args.intermediate_dim}"
         os.makedirs(save_dir, exist_ok=True)
 
         vae.train_model(args.epochs, X, save_dir=save_dir)
@@ -117,8 +121,8 @@ def main():
                 "loss": vae.loss + vae.val_loss,
                 "type": ["train"] * len(vae.loss) + ["val"] * len(vae.val_loss),
                 "epoch": list(range(len(vae.loss))) + list(range(len(vae.val_loss))),
-                "decoder_grad_norm": list(vae.decoder_param_norm) *2,
-                "encoder_grad_norm": list(vae.encoder_param_norm) *2,
+                "decoder_grad_norm": list(vae.decoder_param_norm) * 2,
+                "encoder_grad_norm": list(vae.encoder_param_norm) * 2,
             }
         )
         df_res["descriptor"] = desc

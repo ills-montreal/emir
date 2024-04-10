@@ -75,7 +75,11 @@ GROUPED_MODELS = {
         "topological",
         "avalon",
         "maccs",
+        "atompair-count",
+        "topological-count",
+        "fcfp-count",
         "secfp",
+        "pattern",
         "fcfp",
         "scaffoldkeys",
         "cats",
@@ -112,6 +116,8 @@ def main():
     parser = add_eval_cli_args(parser)
     parser = add_knife_args(parser)
     args = parser.parse_args()
+    if args.wandb:
+        wandb.init(project="Emir")
 
     new_X = []
     for embedder in args.X:
@@ -148,13 +154,14 @@ def main():
     logger.info(f"Saving results in {args.out_dir}")
 
     # Update the wandb config with the args specified in the command line
-    wandb.config.update(args)
+    if args.wandb:
+        wandb.config.update(args)
     smiles_path = f"{args.data_path}/{args.dataset}/smiles.json"
     mol_path = f"{args.data_path}/{args.dataset}/preprocessed.sdf"
 
     assert os.path.exists(
         smiles_path
-    ), "Please run precompute_molf_descriptors.py first."
+    ), f"Please run precompute_molf_descriptors.py first. Missing path : {smiles_path}"
 
     with open(smiles_path, "r") as f:
         smiles = json.load(f)
@@ -168,23 +175,22 @@ def main():
         smiles=smiles,
         mols=mols,
     )
-    return all_results
+    return all_results, args
 
 
 if __name__ == "__main__":
-    wandb.init(project="Emir")
-    df = main()
+    df, args = main()
     max_desc = df.groupby("Y")["I(X->Y)"].max()
     df["mi_normed"] = df.apply(lambda x: x["I(X->Y)"] / max_desc[x.Y], axis=1)
+    if args.wandb:
+        wandb.log(
+            {
+                "inter_model_std": df.groupby("Y")["I(X->Y)"].std().mean(),
+                "intra_model_std": df.groupby("X")["I(X->Y)"].std().mean(),
+                "inter_model_std_normalized": df.groupby("Y").mi_normed.std().mean(),
+                "intra_model_std_normalized": df.groupby("X").mi_normed.std().mean(),
+            }
+        )
 
-    wandb.log(
-        {
-            "inter_model_std": df.groupby("Y")["I(X->Y)"].std().mean(),
-            "intra_model_std": df.groupby("X")["I(X->Y)"].std().mean(),
-            "inter_model_std_normalized": df.groupby("Y").mi_normed.std().mean(),
-            "intra_model_std_normalized": df.groupby("X").mi_normed.std().mean(),
-        }
-    )
-
-    wandb.log({"results": wandb.Table(dataframe=df)})
-    wandb.finish()
+        wandb.log({"results": wandb.Table(dataframe=df)})
+        wandb.finish()
