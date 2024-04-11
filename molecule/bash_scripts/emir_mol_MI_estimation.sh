@@ -27,9 +27,6 @@ cd emir/molecule
 cp -r /home/fransou/scratch/DATA/EMIR/data/$DATASET data
 cp -r /home/fransou/scratch/DATA/EMIR/backbone_pretrained_models ./
 
-export WANDB_MODE=offline
 
 echo "Running script on dataset $DATASET and model $MODELS"
 python main.py --dataset $DATASET --out-dir /home/fransou/scratch/DATA/results --X $MODELS --name run_4 --cond-modes 4 --marg-modes 4
-
-cp -r wandb /home/fransou/scratch/DATA/results/wandb
