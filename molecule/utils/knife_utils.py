@@ -1,7 +1,7 @@
 import os
 from functools import partial
 from itertools import product
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 
 import pickle
 import torch
