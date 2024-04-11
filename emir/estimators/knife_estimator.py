@@ -110,11 +110,29 @@ class KNIFEEstimator:
             x, y, record_loss=record_loss, fit_only_marginal=fit_only_marginal, name=name
         )
 
-        self.knife = self.knife.to("cpu")
-        x, y = x.to("cpu"), y.to("cpu")
-
+        dataset = TensorDataset(x, y)
+        loader = DataLoader(
+            dataset,
+            batch_size=self.args.batch_size,
+            shuffle=False
+        )
+        marginal_entropy = []
+        conditional_entropy = []
+        mutual_information = []
         with torch.no_grad():
-            mutual_information, marg_ent, cond_ent = self.knife(x, y)
+            for x_batch, y_batch in loader:
+                x_batch, y_batch = x_batch.to(self.args.device), y_batch.to(
+                    self.args.device
+                )
+                marg_ent_batch = -self.knife.kernel_marg.logpdf(y_batch)
+                cond_ent_batch = -self.knife.kernel_cond.logpdf(x_batch, y_batch)
+                mutual_information_batch = marg_ent_batch - cond_ent_batch
+                marginal_entropy.append(marg_ent_batch)
+                conditional_entropy.append(cond_ent_batch)
+                mutual_information.append(mutual_information_batch)
+        marg_ent = torch.cat(marginal_entropy).mean()
+        cond_ent = torch.cat(conditional_entropy).mean()
+        mutual_information = torch.cat(mutual_information).mean()
 
         return mutual_information.item(), marg_ent.item(), cond_ent.item()
 

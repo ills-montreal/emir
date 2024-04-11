@@ -33,7 +33,7 @@ class KNIFE(nn.Module):
         if precomputed_marg_kernel is not None:
             self.kernel_marg = precomputed_marg_kernel.to(args.device)
 
-    def run_kernels(self, z_c, z_d):
+    def run_kernels(self, z_c, z_d): # x, y
         marg_ent = self.kernel_marg(z_d)
         cond_ent = self.kernel_cond(z_c, z_d)
         return marg_ent, cond_ent
