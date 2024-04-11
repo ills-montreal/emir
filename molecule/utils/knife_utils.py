@@ -69,11 +69,12 @@ def get_knife_preds(
     x2: callable,
     knife_config: KNIFEArgs = None,
     kernel_marg: Dict = None,
+    name: Optional[str] = None,
 ) -> Tuple[float, float, float, List[float]]:
     knife_estimator = KNIFEEstimator(
         knife_config, x1.shape[1], x2.shape[1], precomputed_marg_kernel=kernel_marg
     )  # Learn x2 from x1
-    mi, m, c = knife_estimator.eval(x1.float(), x2.float(), record_loss=True)
+    mi, m, c = knife_estimator.eval(x1.float(), x2.float(), record_loss=True, name=name)
     return (
         mi,
         m,
@@ -109,7 +110,7 @@ def get_knife_marg_kernel(
         knife_config, x.shape[1], x.shape[1]
     )  # Learn x2 from x1
     _ = knife_estimator.eval(
-        x.float(), x.float(), record_loss=True, fit_only_marginal=True
+        x.float(), x.float(), record_loss=True, fit_only_marginal=True, name=emb_key
     )
     marg_ent = torch.tensor(knife_estimator.recorded_marg_ent, device="cpu")
     df_run_marg_kernel = pd.DataFrame(
@@ -173,6 +174,7 @@ def model_profile(
             Y,
             knife_config=knife_config,
             kernel_marg=marginal_kernels.get(Y_name, None),
+            name=f"{X_name} -> {Y_name}",
         )
         if Y_name not in marginal_kernels:
             marginal_kernels[Y_name] = kernel_marg
@@ -204,6 +206,7 @@ def model_profile(
                 X,
                 knife_config=knife_config,
                 kernel_marg=marginal_kernels.get(X_name, None),
+                name=f"{Y_name} -> {X_name}",
             )
 
             if X_name not in marginal_kernels:

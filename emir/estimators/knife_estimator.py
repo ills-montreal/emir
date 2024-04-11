@@ -80,6 +80,7 @@ class KNIFEEstimator:
         y: torch.torch.Tensor,
         record_loss: Optional[bool] = False,
         fit_only_marginal: Optional[bool] = False,
+        name: Optional[str] = None,
     ) -> Tuple[float, float, float]:
         """
         Mutual information between x and y
@@ -106,7 +107,7 @@ class KNIFEEstimator:
 
         # Fit the model
         self.fit_estimator(
-            x, y, record_loss=record_loss, fit_only_marginal=fit_only_marginal
+            x, y, record_loss=record_loss, fit_only_marginal=fit_only_marginal, name=name
         )
 
         self.knife = self.knife.to("cpu")
@@ -170,6 +171,7 @@ class KNIFEEstimator:
         y,
         record_loss: Optional[bool] = False,
         fit_only_marginal: Optional[bool] = False,
+        name: Optional[str] = None,
     ) -> List[float]:
         """
         Fit the estimator to the data
@@ -187,7 +189,7 @@ class KNIFEEstimator:
         if (
             self.precomputed_marg_kernel is None
         ):  # If a marginal kernel is not precomputed, we train it
-            for epoch in trange(self.args.n_epochs_marg):
+            for epoch in trange(self.args.n_epochs_marg, desc=f"[{name}]\t | Fitting marginal"):
                 epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_marginal(
                     train_loader, optimizer
                 )
@@ -217,7 +219,7 @@ class KNIFEEstimator:
 
             # Then, we fit the conditional kernel
             optimizer.param_groups[0]["lr"] = self.args.lr
-            for epoch in trange(self.args.n_epochs):
+            for epoch in trange(self.args.n_epochs, desc=f"[{name}]\t | Fitting conditional"):
                 epoch_loss, epoch_marg_ent, epoch_cond_ent = self.fit_conditional(
                     train_loader, optimizer
                 )
