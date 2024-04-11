@@ -4,7 +4,7 @@
 #SBATCH --time=0-03:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=40G
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=8
 #SBATCH --tasks-per-node=1
 #SBATCH --nodes=1
 #SBATCH --output=%x-%j.out
@@ -27,6 +27,9 @@ cd emir/molecule
 cp -r /home/fransou/scratch/DATA/EMIR/data/$DATASET data
 cp -r /home/fransou/scratch/DATA/EMIR/backbone_pretrained_models ./
 
+export WANDB_MODE=offline
 
 echo "Running script on dataset $DATASET and model $MODELS"
 python main.py --dataset $DATASET --out-dir /home/fransou/scratch/DATA/results --X $MODELS --name run_4 --cond-modes 4 --marg-modes 4
+
+cp -r wandb /home/fransou/scratch/DATA/results/wandb
