@@ -82,9 +82,9 @@ def get_dataset(dataset: str):
     return df
 
 
-def get_dataset_split(dataset: str, random_seed: int = 42):
+def get_dataset_split(dataset: str, random_seed: int = 42, method="random"):
     try:
-        split = correspondancy_dict[dataset](name=dataset).get_split(seed=random_seed)
+        split = correspondancy_dict[dataset](name=dataset).get_split(seed=random_seed, method=method)
         return [split]
     except Exception as e:
         if e.args[0].startswith(
@@ -95,7 +95,7 @@ def get_dataset_split(dataset: str, random_seed: int = 42):
             for l in tqdm(label_list):
                 split.append(
                     correspondancy_dict[dataset](name=dataset, label_name=l).get_split(
-                        seed=random_seed
+                        seed=random_seed, method=method
                     )
                 )
             return split

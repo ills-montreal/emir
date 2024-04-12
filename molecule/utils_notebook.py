@@ -1,172 +1,201 @@
-from typing import List, Union, Optional, Tuple, Dict, Any
+import os
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
+from tqdm import tqdm as tqdm
 import numpy as np
-from tqdm import tqdm
+import json
+import sklearn
+from sklearn.decomposition import PCA
+import yaml
 
-import datamol as dm
-from molfeat.trans.fp import FPVecTransformer
-from molfeat.trans import MoleculeTransformer
-from molfeat.calc.pharmacophore import Pharmacophore2D, Pharmacophore3D
-import torch_geometric.nn.pool as tgp
-from torch_geometric.data import DataLoader
+from utils import MolecularFeatureExtractor
+from models.model_paths import get_model_path
+
+from main import GROUPED_MODELS
 
 
-import torch
-
-from models.moleculenet_models import GNN, GNN_graphpred
-from moleculenet_encoding import mol_to_graph_data_obj_simple
-from models.transformers_models import get_hugging_face_model
-
-MODEL_PARAMS = {
-    "num_layer": 5,
-    "emb_dim": 300,
-    "JK": "last",
-    "drop_ratio": 0.5,
-    "gnn_type": "gin",
-}
-
-threeD_method_fpvec = ["usrcat", "electroshape", "usr"]
-fpvec_method = [
-    "ecfp-count",
-    "ecfp",
-    "estate",
-    "erg",
-    "rdkit",
-    "topological",
-    "avalon",
-    "maccs",
-    "atompair-count",
-    "topological-count",
-    "fcfp-count",
-    "secfp",
-    "pattern",
-    "fcfp"
+MODELS = [
+    "ContextPred",
+    "GPT-GNN",
+    "GraphMVP",
+    "GROVER",
+    # "EdgePred", # This model is especially bad and makes visualization hard
+    "AttributeMask",
+    "GraphLog",
+    "GraphCL",
+    "InfoGraph",
+    "Not-trained",
+    "MolBert",
+    "ChemBertMLM-5M",
+    "ChemBertMLM-10M",
+    "ChemBertMLM-77M",
+    "ChemBertMTR-5M",
+    "ChemBertMTR-10M",
+    "ChemBertMTR-77M",
+    "ChemGPT-1.2B",
+    "ChemGPT-19M",
+    "ChemGPT-4.7M",
+    "DenoisingPretrainingPQCMv4",
+    "FRAD_QM9",
+    "MolR_gat",
+    "MolR_gcn",
+    "MolR_tag",
+    "MoleOOD_OGB_GIN",
+    "MoleOOD_OGB_GCN",
+    "MoleOOD_OGB_SAGE",
+    "ThreeDInfomax",
 ]
-moleculetransf_method = [
-    "scaffoldkeys",
-    "mordred"
-]
-pharmac_method = ["cats", "default", "gobbi", "pmapper"]
+
+MODELS_PATH = get_model_path(models=MODELS)
 
 
-@torch.no_grad()
-def get_embeddings_from_model_moleculenet(
-    dataloader: DataLoader,
-    smiles: List[str],
-    mols: Optional[List[dm.Mol]] = None,
-    path: str = "backbone_pretrained_models/GROVER/grover.pth",
-    pooling_method=tgp.global_mean_pool,
-    normalize: bool = False,
+def plot_embeddings(
+    DATASET,
+    LENGTH=1024,
+    use_VAE=False,
+    VAE_dim=128,
+    VAE_n_layers=2,
+    VAE_int_dim=256,
+    MODELS=MODELS,
+    MODELS_PATH=MODELS_PATH,
 ):
-    embeddings = []
-    molecule_model = GNN(**MODEL_PARAMS)
-    if not path == "":
-        molecule_model.load_state_dict(torch.load(path))
-    for b in dataloader:
-        embeddings.append(
-            torch.nn.functional.normalize(
-                pooling_method(molecule_model(b.x, b.edge_index, b.edge_attr), b.batch),
-                dim=1,
+    with open(f"data/{DATASET}/smiles.json", "r") as f:
+        smiles = json.load(f)
+
+    if not len(smiles) > 50000:
+        import datamol as dm
+
+        mols = dm.read_sdf(f"data/{DATASET}/preprocessed.sdf")
+
+        feature_extractor = MolecularFeatureExtractor(
+            dataset=DATASET,
+            length=LENGTH,
+            use_vae=use_VAE,
+            vae_path=f"data/{DATASET}/VAE/latent_dim_{VAE_dim}/n_layers_{VAE_n_layers}/intermediate_dim_{VAE_int_dim}",
+            device="cuda",
+        )
+        # same plots but in 3D
+
+        fig, axes = plt.subplots(
+            4, len(MODELS) // 4, figsize=(len(MODELS) // 4 * 5, 4 * 5)
+        )
+        axes = axes.flatten()
+        df_desc = dm.descriptors.batch_compute_many_descriptors(mols)
+        print("Descriptors computed")
+
+        for i, model in enumerate(MODELS):
+            embeddings = feature_extractor.get_features(
+                smiles,
+                mols=mols,
+                name=model,
+                feature_type="model",
+                path=MODELS_PATH.get(model, None),
             )
-        )
-    embeddings = torch.cat(embeddings, dim=0)
-    return embeddings
-
-
-
-def get_molfeat_transformer(transformer_name: str, length: int = 1024):
-    if transformer_name in fpvec_method or transformer_name in threeD_method_fpvec:
-        if transformer_name in threeD_method_fpvec:
-            return (
-                FPVecTransformer(
-                    kind=transformer_name,
-                    dtype=float,
-                    length=length,
-                ),
-                True,
+            # nromalize embeddings
+            embeddings = (embeddings - embeddings.mean(axis=0)) / (
+                embeddings.std(axis=0) + 1e-8
             )
-        return (
-            FPVecTransformer(kind=transformer_name, dtype=float, length=length),
-            False,
-        )
-    elif transformer_name in moleculetransf_method:
-        return (
-            MoleculeTransformer(
-                featurizer=transformer_name, dtype=float, length=length
-            ),
-            False,
-        )
-    elif transformer_name in pharmac_method:
-        return (
-            MoleculeTransformer(
-                featurizer=Pharmacophore2D(factory=transformer_name, length=length),
-                dtype=float,
-            ),
-            False,
-        )
-    elif (
-        transformer_name.endswith("/3D")
-        and transformer_name[:-3] in pharmac_method
-        and not transformer_name[:-3] == "default"
-    ):
-        return (
-            MoleculeTransformer(
-                featurizer=Pharmacophore3D(
-                    factory=transformer_name[:-3], length=length
-                ),
-                dtype=float,
-            ),
-            True,
-        )
-    else:
-        raise ValueError(f"Invalid transformer name: {transformer_name}")
+            pca = PCA(n_components=3)
+            embeddings_pca = pca.fit_transform(embeddings.cpu())
+            df = pd.DataFrame(embeddings_pca, columns=[f"PC{i}" for i in range(1, 4)])
+            df["smiles"] = smiles
+            # using pyplot
+            sns.scatterplot(
+                data=df,
+                x="PC1",
+                y="PC2",
+                ax=axes[i],
+                hue=df_desc["sas"],
+                cmap="viridis",
+                legend=False,
+                alpha=0.5,
+            )
+            axes[i].set_title(model)
+            axes[i].set_xlabel("PC1")
+            axes[i].set_ylabel("PC2")
+        plt.tight_layout()
+        plt.show()
 
 
-def physchem_descriptors(
-    dataloader: DataLoader,
-    smiles: List[str],
-    mols: Optional[List[dm.Mol]] = None,
-    length: int = 1024,
+def get_loss_df(
+    DATASET,
+    results_dir_list,
+    LENGTH=1024,
+    use_VAE=True,
+    VAE_dim=64,
+    args_to_add=[
+        "cond_modes",
+        "marg_modes",
+        "ff_layers",
+        "ff_hidden_dim",
+        "batch_size",
+    ],
 ):
-    mols = [dm.to_mol(s) for s in smiles]
-    df_descriptors = dm.descriptors.batch_compute_many_descriptors(mols)
-    df_descriptors = df_descriptors.fillna(0)
-    df_descriptors = torch.tensor(df_descriptors.astype(np.float32).to_numpy())
-    df_descriptors = (df_descriptors - df_descriptors.mean(dim=0, keepdim=True)) / (
-        df_descriptors.std(dim=0, keepdim=True) + 1e-6
-    )
-    return df_descriptors
+    full_df_loss_cond = []
+    full_df_loss_marg = []
+
+    for results_dir in tqdm(results_dir_list):
+        RESULTS_PATH = f"results/{DATASET}/{LENGTH}/{use_VAE}_{VAE_dim}/{results_dir}"
+
+        with open(RESULTS_PATH + "/args.yaml", "r") as f:
+            args = yaml.load(f, Loader=yaml.FullLoader)
+        dir_path = os.path.join(RESULTS_PATH, "losses")
+
+        for file in os.listdir(dir_path):
+            if file.endswith(".csv") and file[:-4].split("_")[0] == DATASET:
+                file_split = file[:-4].split("_")
+                if file_split[-1] == "marg":
+                    df_tmp = pd.read_csv(os.path.join(dir_path, file))
+                    for arg in args_to_add:
+                        df_tmp[arg] = args[arg]
+                    full_df_loss_marg.append(df_tmp)
+                else:
+                    df_tmp = pd.read_csv(os.path.join(dir_path, file))
+                    for arg in args_to_add:
+                        df_tmp[arg] = args[arg]
+                    full_df_loss_cond.append(df_tmp)
+
+    full_df_loss_marg = pd.concat(full_df_loss_marg)
+    full_df_loss_cond = pd.concat(full_df_loss_cond)
+
+    return full_df_loss_marg, full_df_loss_cond
 
 
-def get_molfeat_descriptors(
-    dataloader: DataLoader,
-    smiles: List[str],
-    transformer_name: str,
-    mols: Optional[List[dm.Mol]] = None,
-    normalize: bool = False,
-    length: int = 1024,
+def get_MI_df(
+    DATASET,
+    results_dir_list,
+    LENGTH=1024,
+    use_VAE=True,
+    VAE_dim=64,
+    args_to_add=[
+        "cond_modes",
+        "marg_modes",
+        "ff_layers",
+        "ff_hidden_dim",
+        "batch_size",
+    ],
 ):
-    """
-    Returns a list of descriptors for a given smiles string, obtained by using Molfeat's FPVecTransformer.
-    """
+    full_df_MI = []
 
-    if transformer_name == "physchem":
-        molecular_embeddings = physchem_descriptors(
-            dataloader, smiles, mols=mols, length=length
-        )
-    else:
-        transformer, threeD = get_molfeat_transformer(transformer_name, length=length)
+    for results_dir in tqdm(results_dir_list):
+        RESULTS_PATH = f"results/{DATASET}/{LENGTH}/{use_VAE}_{VAE_dim}/{results_dir}"
 
-        if threeD and mols is None:
-            mols = [
-                dm.conformers.generate(dm.to_mol(s), align_conformers=True, n_confs=5)
-                for s in tqdm(smiles, desc="Generating conformers")
-            ]
-        if threeD:
-            molecular_embeddings = torch.tensor(transformer(mols, progress=True))
-        else:
-            molecular_embeddings = torch.tensor(transformer(smiles, progress=True))
-    if normalize:
-        molecular_embeddings = torch.nn.functional.normalize(
-            molecular_embeddings, dim=1
-        )
-    return molecular_embeddings
+        with open(RESULTS_PATH + "/args.yaml", "r") as f:
+            args = yaml.load(f, Loader=yaml.FullLoader)
+
+        all_df = []
+        for file in os.listdir(RESULTS_PATH):
+            if file.endswith(".csv"):
+                file_split = file[:-4].split("_")
+                if file_split[0] == DATASET and file_split[-1] == str(LENGTH):
+                    all_df.append(pd.read_csv(os.path.join(RESULTS_PATH, file)))
+        all_df = pd.concat(all_df)
+        for arg in args_to_add:
+            all_df[arg] = args[arg]
+        full_df_MI.append(all_df)
+
+    full_df_MI = pd.concat(full_df_MI)
+
+    return full_df_MI

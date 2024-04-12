@@ -88,7 +88,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--marg-modes", type=int, default=2)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch-size", type=int, default=1024)
-    parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--device", type=str, dCLUSTER_PATHefault="cuda")
     parser.add_argument("--n-epochs", type=int, default=100)
     parser.add_argument("--n-epochs-marg", type=int, default=100)
     parser.add_argument("--ff-layers", type=int, default=2)
@@ -184,4 +184,5 @@ def add_downstream_args(parser: argparse.ArgumentParser):
     parser.set_defaults(test_run=False)
 
     parser.add_argument("--config", type=str, default="downstream_config.yaml")
+    parser.add_argument("--split-method", type=str, default="random")
     return parser

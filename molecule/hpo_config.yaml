@@ -12,6 +12,8 @@ parameters:
     values: [0, 0.2]
   n-epochs:
     values: [100]
+  split-method:
+    values: ["scaffold"]
   datasets:
     values: [
         "hERG",
@@ -35,6 +37,16 @@ parameters:
         "CYP2C9_Substrate_CarbonMangels",
         "CYP2D6_Substrate_CarbonMangels",
         "CYP3A4_Substrate_CarbonMangels",
+        "Caco2_Wang",
+        "Lipophilicity_AstraZeneca",
+        "Solubility_AqSolDB",
+        "HydrationFreeEnergy_FreeSolv",
+        "PPBR_AZ",
+        "VDss_Lombardo",
+        "Half_Life_Obach",
+        "Clearance_Hepatocyte_AZ",
+        "Clearance_Microsome_AZ",
+        "LD50_Zhu"
     ]
 
 command:

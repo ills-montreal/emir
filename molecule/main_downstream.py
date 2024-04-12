@@ -125,9 +125,9 @@ def get_split_idx(
     data_path: str,
     split: Dict[str, pd.DataFrame],
 ):
-    with open(os.path.join(path, "smiles.json"), "r") as f:
+    with open(os.path.join(data_path, "smiles.json"), "r") as f:
         smiles = json.load(f)
-    mol_path = os.path.join(path, "preprocessed.sdf")
+    mol_path = os.path.join(data_path, "preprocessed.sdf")
     if os.path.exists(mol_path):
         mols = dm.read_sdf(mol_path)
     else:
@@ -255,6 +255,7 @@ def main(args):
 
     for dataset in args.datasets:
         data_path = os.path.join(args.data_path, dataset)
+        print(data_path)
         if (
             not args.test_run
         ):  # If we are not in test run, we use the config from the parser
@@ -286,14 +287,14 @@ def main(args):
         for random_seed in tqdm(
             range(args.n_runs), desc=f"Dataset {dataset}", position=1, leave=False
         ):
-            splits = get_dataset_split(dataset, random_seed=random_seed)
+            splits = get_dataset_split(dataset, random_seed=random_seed, method = args.split_method)
 
             for i, embedder_name in enumerate(args.embedders):
                 for split in splits:
                     split_idx, smiles, mols = get_split_idx(data_path, split)
                     # Get all enmbedders
                     feature_extractor = MolecularFeatureExtractor(
-                        dataset=dataset, length=args.length, device=args.device, data_dir = data_path
+                        dataset=dataset, length=args.length, device=args.device, data_dir = args.data_path
                     )
                     embedders = get_embedders(MODELS + DESCRIPTORS, feature_extractor)
 
@@ -339,7 +340,7 @@ def main(args):
 if __name__ == "__main__":
     from parser_mol import add_downstream_args, add_FF_downstream_args
 
-    wandb.init(project="Emir-downstream")
+
 
     parser = argparse.ArgumentParser(
         description="Launch the evaluation of a downstream model",
@@ -351,6 +352,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+
+    if args.split_method == "scaffold":
+        wandb.init(project="Emir-downstream", tags=["scaffold"])
+    else:
+        wandb.init(project="Emir-downstream")
 
     if args.hpo_whole_config is not None:
         config = args.hpo_whole_config.split("_")
