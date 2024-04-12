@@ -27,7 +27,7 @@ cd emir/molecule
 cp -r /home/fransou/scratch/DATA/EMIR/data/$DATASET data
 cp -r /home/fransou/scratch/DATA/EMIR/backbone_pretrained_models ./
 
-export NAME=run_4_notanh-64
+export NAME=run_4_notanh-128
 
 echo "Running script on dataset $DATASET and model $MODELS in $NAME"
-python main.py --dataset $DATASET --out-dir /home/fransou/scratch/DATA/results --X $MODELS --name $NAME --cond-modes 4 --marg-modes 4 --use-tanh false --ff-hidden-dim 64
+python main.py --dataset $DATASET --out-dir /home/fransou/scratch/DATA/results --X $MODELS --name $NAME --cond-modes 4 --marg-modes 4 --use-tanh false --ff-hidden-dim 128
