@@ -185,6 +185,7 @@ class Feed_forward(torch.nn.Module):
             self.train_epoch(dataloader_train)
             self.evaluate(dataloader_val)
 
+
     def plot_loss(self, title=""):
         fig, axess = plt.subplots(2, 2, figsize=(7, 7))
         axes = axess.flatten()
@@ -212,3 +213,28 @@ class Feed_forward(torch.nn.Module):
         fig.suptitle(title)
         fig.tight_layout()
         plt.show()
+
+
+
+class FF_trainer():
+    def __init__(self, model):
+        self.model = model
+        self.best_ckpt = model.state_dict()
+
+    def train_model(self, dataloader_train, dataloader_val, p_bar_name="Epochs"):
+        n_epochs = min(int(self.model.config.n_epochs * 5000 / self.model.task_size)+1, self.model.config.n_epochs)
+        for i in trange(n_epochs, desc=p_bar_name, leave=False):
+            self.model.train_epoch(dataloader_train)
+            self.model.evaluate(dataloader_val)
+
+            if self.model.task == "classification" and i > 0:
+                if self.model.val_roc[-1] > max(self.model.val_roc[:-1]):
+                    self.best_ckpt = self.model.state_dict()
+            elif self.model.task == "regression" and i > 0:
+                if self.model.r2_val[-1] > max(self.model.r2_val[:-1]):
+                    self.best_ckpt = self.model.state_dict()
+
+    def eval_on_test(self, dataloader_test):
+        self.model.load_state_dict(self.best_ckpt)
+        self.model.evaluate(dataloader_test, record=False)
+        return self.model.val_roc[-1] if self.model.task == "classification" else self.model.r2_val[-1]

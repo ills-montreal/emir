@@ -66,7 +66,7 @@ def get_dataset(dataset: str):
     try:
         data = correspondancy_dict[dataset](name=dataset)
         if dataset in ["DAVIS"]:
-            data.harmonize_affinities(mode = 'max_affinity')
+            data.harmonize_affinities(mode="max_affinity")
         df = data.get_data()
     except Exception as e:
         if e.args[0].startswith(
@@ -84,7 +84,14 @@ def get_dataset(dataset: str):
 
 def get_dataset_split(dataset: str, random_seed: int = 42, method="random"):
     try:
-        split = correspondancy_dict[dataset](name=dataset).get_split(seed=random_seed, method=method)
+        split = correspondancy_dict[dataset](name=dataset).get_split(
+            seed=random_seed, method=method
+        )
+        for k in split:
+            if split[k].Y.nunique() < 2:
+                return get_dataset_split(
+                    dataset, random_seed=random_seed + 10, method=method
+                )
         return [split]
     except Exception as e:
         if e.args[0].startswith(
@@ -93,11 +100,15 @@ def get_dataset_split(dataset: str, random_seed: int = 42, method="random"):
             label_list = retrieve_label_name_list(dataset)
             split = []
             for l in tqdm(label_list):
-                split.append(
-                    correspondancy_dict[dataset](name=dataset, label_name=l).get_split(
-                        seed=random_seed, method=method
-                    )
-                )
+                subsplit = correspondancy_dict[dataset](
+                    name=dataset, label_name=l
+                ).get_split(seed=random_seed, method=method)
+                for k in subsplit:
+                    if subsplit[k].Y.nunique() < 2:
+                        return get_dataset_split(
+                            dataset, random_seed=random_seed + 10, method=method
+                        )
+                split.append(subsplit)
             return split
         else:
             raise e

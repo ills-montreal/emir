@@ -180,8 +180,6 @@ def add_downstream_args(parser: argparse.ArgumentParser):
     parser.add_argument("--plot-loss", action="store_true")
     parser.set_defaults(plot_loss=False)
 
-    parser.add_argument("--test-run", action="store_true")
-    parser.set_defaults(test_run=False)
 
     parser.add_argument("--config", type=str, default="downstream_config.yaml")
     parser.add_argument("--split-method", type=str, default="random")

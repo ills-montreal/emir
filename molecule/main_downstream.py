@@ -7,7 +7,12 @@ import torch
 import argparse
 import yaml
 
-from molecule.utils.evaluation import get_dataloaders, Feed_forward, FFConfig
+from molecule.utils.evaluation import (
+    get_dataloaders,
+    Feed_forward,
+    FFConfig,
+    FF_trainer,
+)
 from molecule.tdc_dataset import get_dataset_split
 
 from molecule.utils import MolecularFeatureExtractor
@@ -167,6 +172,7 @@ def get_split_emb(
         }
     return split_emb
 
+
 def launch_evaluation(
     dataset: str,
     length: int,
@@ -178,7 +184,6 @@ def launch_evaluation(
     mols: List[dm.Mol],
     embedders: Dict[str, Callable],
     plot_loss: bool = False,
-    test_run: bool = False,
     run_num: Optional[Tuple[int, int]] = None,
 ):
     split_emb = get_split_emb(split_idx, embedders, smiles, mols, embedder_name)
@@ -212,39 +217,28 @@ def launch_evaluation(
             task_size=y_train.shape[0],
         )
 
-    if test_run:
-        model.train_model(
-            dataloader_train,
-            dataloader_test,
-            p_bar_name=f"{run_num[0]} / {run_num[1]} : \t{dataset} - {embedder_name} : ",
-        )
-    else:
-        model.train_model(
-            dataloader_train,
-            dataloader_val,
-            p_bar_name=f"{run_num[0]} / {run_num[1]} : \t{dataset} - {embedder_name} : ",
-        )
+    trainer = FF_trainer(model)
 
-    if plot_loss:
-        model.plot_loss(title=embedder_name)
+    trainer.train_model(
+        dataloader_train,
+        dataloader_val,
+        p_bar_name=f"{run_num[0]} / {run_num[1]} : \t{dataset} - {embedder_name} : ",
+    )
+
+    model = trainer.model
     for val_roc in model.val_roc:
         wandb.log({f"val_roc": val_roc})
-
     for r2 in model.r2_val:
         wandb.log({f"r2_val": r2})
 
-    if model.val_roc == []:
-        metric = model.r2_val
-    else:
-        metric = model.val_roc
-    n_epochs = len(metric)
+    test_metric = trainer.eval_on_test(dataloader_test)
+
     df_results = pd.DataFrame(
         {
-            "epoch": range(n_epochs),
-            "embedder": [embedder_name] * n_epochs,
-            "dataset": [dataset] * n_epochs,
-            "length": [length] * n_epochs,
-            "metric": metric,
+            "embedder": [embedder_name],
+            "dataset": [dataset],
+            "length": [length],
+            "metric": test_metric,
         }
     )
     return df_results
@@ -255,46 +249,34 @@ def main(args):
 
     for dataset in args.datasets:
         data_path = os.path.join(args.data_path, dataset)
-        print(data_path)
-        if (
-            not args.test_run
-        ):  # If we are not in test run, we use the config from the parser
-            model_config = FFConfig(
-                hidden_dim=args.hidden_dim,
-                n_layers=args.n_layers,
-                d_rate=args.d_rate,
-                norm=args.norm,
-                lr=args.lr,
-                batch_size=args.batch_size,
-                n_epochs=args.n_epochs,
-                device=args.device,
-                test_batch_size=args.test_batch_size,
-            )
-        else:  # If we are in test run, we use the config file storing the architecture for each dataset
-            with open(args.config, "r") as f:
-                config = yaml.safe_load(f)
-                config = config[dataset]
-            model_config = FFConfig(
-                hidden_dim=config.hidden_dim,
-                n_layers=config.n_layers,
-                d_rate=config.d_rate,
-                norm=args.norm,
-                lr=args.lr,
-                batch_size=args.batch_size,
-                n_epochs=args.n_epochs,
-                device=args.device,
-            )
+        model_config = FFConfig(
+            hidden_dim=args.hidden_dim,
+            n_layers=args.n_layers,
+            d_rate=args.d_rate,
+            norm=args.norm,
+            lr=args.lr,
+            batch_size=args.batch_size,
+            n_epochs=args.n_epochs,
+            device=args.device,
+            test_batch_size=args.test_batch_size,
+        )
+
         for random_seed in tqdm(
             range(args.n_runs), desc=f"Dataset {dataset}", position=1, leave=False
         ):
-            splits = get_dataset_split(dataset, random_seed=random_seed, method = args.split_method)
+            splits = get_dataset_split(
+                dataset, random_seed=random_seed, method=args.split_method
+            )
 
             for i, embedder_name in enumerate(args.embedders):
                 for split in splits:
                     split_idx, smiles, mols = get_split_idx(data_path, split)
                     # Get all enmbedders
                     feature_extractor = MolecularFeatureExtractor(
-                        dataset=dataset, length=args.length, device=args.device, data_dir = args.data_path
+                        dataset=dataset,
+                        length=args.length,
+                        device=args.device,
+                        data_dir=args.data_path,
                     )
                     embedders = get_embedders(MODELS + DESCRIPTORS, feature_extractor)
 
@@ -310,27 +292,12 @@ def main(args):
                             mols=mols,
                             embedders=embedders,
                             plot_loss=args.plot_loss,
-                            test_run=args.test_run,
                             run_num=(i, len(args.embedders)),
                         )
                     )
 
     df = pd.concat(final_res).reset_index(drop=True)
-    df_grouped = (
-        df.groupby(["epoch", "embedder", "dataset", "length"]).mean().reset_index()
-    )
-
-    # Find best epoch for each embedder - dataset
-    best_epoch = (
-        df_grouped.groupby(["embedder", "dataset"])
-        .apply(lambda x: x.loc[x["metric"].idxmax()])
-        .reset_index(drop=True)
-    )
-    df = df[["epoch", "embedder", "dataset", "length"]].join(
-        best_epoch.set_index(["epoch", "embedder", "dataset", "length"]),
-        on=["epoch", "embedder", "dataset", "length"],
-        how="inner",
-    )
+    df = df.groupby(["embedder", "dataset", "length"]).mean().reset_index()
 
     wandb.log({"mean_metric": df.groupby("embedder")["metric"].mean().mean()})
     df = wandb.Table(dataframe=df)
@@ -339,8 +306,6 @@ def main(args):
 
 if __name__ == "__main__":
     from parser_mol import add_downstream_args, add_FF_downstream_args
-
-
 
     parser = argparse.ArgumentParser(
         description="Launch the evaluation of a downstream model",
@@ -351,7 +316,6 @@ if __name__ == "__main__":
     parser = add_FF_downstream_args(parser)
 
     args = parser.parse_args()
-
 
     if args.split_method == "scaffold":
         wandb.init(project="Emir-downstream", tags=["scaffold"])

@@ -1,3 +1,5 @@
+import os
+
 import json
 import pickle
 from typing import List
@@ -10,6 +12,10 @@ from molecule.external_repo.MoleOOD.OGB.evaluate import build_backend_from_confi
 from ogb.utils.mol import smiles2graph
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
+
+DATA_PATH = "/export/livia/datasets/datasets/public/molecule/data"
+if not os.path.exists(DATA_PATH):
+    DATA_PATH = "data"
 
 class MoleOOD(nn.Module):
     def __init__(
@@ -56,7 +62,7 @@ class MoleOOD(nn.Module):
         return self.model.get_molecule_feature(batch_sub, batched_data)
 
     def get_dataloader_from_dataset_name(self, dataset_name: str, batch_size: int = 4):
-        data_dir = f"data/{dataset_name}"
+        data_dir = f"{DATA_PATH}/{dataset_name}"
 
         with open(f"{data_dir}/smiles.json", "r") as f:
             smiles = json.load(f)
