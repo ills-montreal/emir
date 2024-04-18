@@ -61,7 +61,7 @@ class GaussianMargKernel(BaseMargKernel):
             logvar = logvar.tanh()
         var = logvar.exp()
         y = y * var
-        # print(f"Marg : {var.min()} | {var.max()} | {var.mean()}")
+
         if self.tri is not None:
             y = y + torch.squeeze(
                 torch.matmul(torch.tril(self.tri, diagonal=-1), y[:, :, :, None]), 3
@@ -118,4 +118,3 @@ class GaussianCondKernel(BaseCondKernel):
         z = -z / 2 + torch.log(torch.abs(var) + 1e-8).sum(-1) + w
         z = torch.logsumexp(z, dim=-1)
         return self.logC + z
-

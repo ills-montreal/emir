@@ -4,9 +4,11 @@ from typing import Tuple
 
 import pandas as pd
 import torch
+import numpy as np
 from sentence_transformers import SentenceTransformer
 
 from emir.estimators import KNIFEEstimator, KNIFEArgs
+import re
 
 
 # logging.basicConfig(stream=stdout, level=logging.)
@@ -20,13 +22,15 @@ def parse_args():
     parser.add_argument("--n_epochs", type=int, default=200)
 
     # stoping criterion
-    parser.add_argument("--stopping_criterion", type=str, default="max_epochs")  # "max_epochs" or "early_stopping"
+    parser.add_argument(
+        "--stopping_criterion", type=str, default="max_epochs"
+    )  # "max_epochs" or "early_stopping"
     parser.add_argument("--eps", type=float, default=1e-6)
 
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--average", type=str, default="")
-    parser.add_argument("--cov_diagonal", type=str, default="")
+    parser.add_argument("--average", type=str, default="var")
+    parser.add_argument("--cov_diagonal", type=str, default="var")
     parser.add_argument("--cov_off_diagonal", type=str, default="")
     parser.add_argument("--optimize_mu", default=False, action="store_true")
 
@@ -51,7 +55,7 @@ def parse_summaries(path: Path):
     """
     # read csv file
 
-    df = pd.read_csv(path, sep=";").dropna()
+    df = pd.read_csv(path).dropna()
 
     # check if the csv file has the correct columns
     if not all([col in df.columns for col in ["text", "summary"]]):
@@ -108,6 +112,10 @@ def compute_mi(
 
 
 def main():
+    # set seeds
+    torch.manual_seed(42)
+    np.random.seed(42)
+
     args = parse_args()
 
     # check if the file exists already
@@ -135,21 +143,25 @@ def main():
     )
 
     # Retrive metadata from stem
-    metadata = args.summaries.stem.split("-_-")
-    model_name, dataset_name, decoding_config, date = metadata
+    # check if stem has form M[1-9]{0,2}
+
+    if re.match(r"M[1-9]{0,2}", args.summaries.stem):
+        model_name = args.summaries.stem
+        dataset_name, decoding_config, date = "SummEval", None, None
+    else:
+        metadata = args.summaries.stem.split("-_-")
+        model_name, dataset_name, decoding_config, date = metadata
 
     # make a pandas dataframe, use summaries filename as index
 
-
     df = pd.DataFrame(
         {
-            "filename" : [args.summaries.stem],
-            "metadata/Embedding model" : [args.model],
-            "metadata/Decoding config" : [decoding_config],
-            "metadata/Date" : [date],
-            "metadata/Model name" : [model_name],
-            "metadata/Dataset name" : [dataset_name],
-
+            "filename": [args.summaries.stem],
+            "metadata/Embedding model": [args.model],
+            "metadata/Decoding config": [decoding_config],
+            "metadata/Date": [date],
+            "metadata/Model name": [model_name],
+            "metadata/Dataset name": [dataset_name],
             "I(text -> summary)": [mi],
             "H(summary)": [marg_ent],
             "H(summary|text)": [cond_ent],

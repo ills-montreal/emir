@@ -5,6 +5,7 @@ import pandas as pd
 
 from bert_score import BERTScorer
 
+
 def sanitize_model_name(model_name: str) -> str:
     """
     Sanitize the model name to be used as a folder name.
@@ -41,7 +42,6 @@ def parse_summaries(path: Path):
 
     df = pd.read_csv(path, sep=";").dropna()
 
-
     # check if the csv file has the correct columns
     if not all([col in df.columns for col in ["text", "summary"]]):
         raise ValueError("The csv file must have the columns 'text' and 'summary'.")
@@ -57,14 +57,19 @@ def evaluate_bartbert(df, device="cuda"):
 
     scorer = BERTScorer(lang="en", rescale_with_baseline=True, device=device)
 
-    metrics = {'BERTScore': []}
+    metrics = {"BERTScore": [], "BERTScore Recall": [], "BERTScore Precision": []}
     for i in range(len(texts)):
         texts[i] = texts[i].replace("\n", " ")
         summaries[i] = summaries[i].replace("\n", " ")
 
+        print(len(texts[i]))
+        print(len(summaries[i]))
+
         P, R, F1 = scorer.score([summaries[i]], [texts[i]])
 
-        metrics['BERTScore'].append(F1.mean().item())
+        metrics["BERTScore"].append(F1.mean().item())
+        metrics["BERTScore Recall"].append(R.mean().item())
+        metrics["BERTScore Precision"].append(P.mean().item())
 
     # compute the mean of the metrics
     metrics = {k: sum(v) / len(v) for k, v in metrics.items()}
@@ -110,7 +115,6 @@ def main():
         # add entry to the dataframe
         for col in df.columns:
             df_old.loc[args.summaries.stem, col] = df.loc[args.summaries.stem, col]
-
 
     df.to_csv(path)
 

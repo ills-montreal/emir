@@ -141,7 +141,7 @@ class EmbeddingClassificationTask(L.LightningModule):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True)
-    parser.add_argument("--model", type=str, required=True)
+    parser.add_argument("--model", type=str, nargs="+", required=True)
     parser.add_argument("--embeddings_dir", type=str, required=True)
 
     parser.add_argument("--output_dir", type=Path, required=True)
@@ -176,22 +176,30 @@ def main():
         project="emir-nlp-embeddings-classification",
         config=vars(args) | {"model_name": args.model},
     )
-    print(vars(args))
     unique_id = wandb.run.id
     # make output dir
     args.output_dir.mkdir(exist_ok=True, parents=True)
 
-    # load dataset
-    base_dir = Path(args.embeddings_dir) / args.model / args.dataset
+    _embeddings = []
+    for model in args.model:
+        base_dir = Path(args.embeddings_dir) / model / args.dataset
 
-    # list directories in base_dir
-    splits = [d.name for d in base_dir.iterdir() if d.is_dir()]
+        # list directories in base_dir
+        splits = [d.name for d in base_dir.iterdir() if d.is_dir()]
 
-    # load embeddings
-    embeddings = {
-        split: torch.tensor(torch.load(base_dir / split / "embeddings.npy"))
-        for split in splits
-    }
+        # load embeddings
+        embeddings = {
+            split: torch.tensor(torch.load(base_dir / split / "embeddings.npy"))
+            for split in splits
+        }
+
+        _embeddings.append(embeddings)
+
+    embeddings = {}
+    for split in splits:
+        embeddings[split] = torch.cat(
+            [_embeddings[i][split] for i in range(len(args.model))], dim=1
+        )
 
     labels = {
         split: torch.tensor(torch.load(base_dir / split / "labels.npy")).view(-1)
