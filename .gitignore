@@ -188,3 +188,6 @@ molecule/fig
 molecule/results
 molecule/external_repo/pre-training-via-denoising
 molecule/external_repo/molformer
+
+*.zip
+*.pt
