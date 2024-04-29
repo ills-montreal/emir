@@ -1,7 +1,10 @@
 from sentence_transformers import SentenceTransformer
 
-
 SMALL_MODELS = [
+    "Snowflake/snowflake-arctic-embed-s",
+    "Snowflake/snowflake-arctic-embed-xs",
+    "Snowflake/snowflake-arctic-embed-m",
+    "Snowflake/snowflake-arctic-embed-l",
     "BAAI/bge-base-en-v1.5",
     "infgrad/stella-base-en-v2",
     "intfloat/e5-large-v2",
@@ -28,7 +31,6 @@ SMALL_MODELS = [
     "intfloat/e5-small",
     "sentence-transformers/gtr-t5-large",
     "thenlper/gte-base",
-    "nomic-ai/nomic-embed-text-v1",
     "sentence-transformers/all-distilroberta-v1",
     "sentence-transformers/all-MiniLM-L6-v2",
     "sentence-transformers/all-mpnet-base-v2",

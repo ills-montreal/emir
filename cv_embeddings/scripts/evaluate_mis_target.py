@@ -62,7 +62,7 @@ def parse_args():
     parser.add_argument("--ff_dim_hidden", type=int, default=0)
 
     parser.add_argument("--normalize_embeddings", action="store_true", default=False)
-    parser.add_argument("--fixed_embeddings", default="Common")
+    parser.add_argument("--fixed_embeddings", default="All")
 
     return parser.parse_args()
 
@@ -76,7 +76,7 @@ def find_embedding_paths(
     N_ds = 12
 
     embeddings_1 = []
-    for path in model_1_path.rglob("*embeddings.npy"):
+    for path in model_1_path.rglob("*embeddings.*"):
         if dataset_filter is None or re.search(dataset_filter, path.name):
             path = str(path)[len(str(model_1_path)) + 1 :]
             embeddings_1.append(path)
@@ -94,7 +94,7 @@ def find_embedding_paths(
 
     for model_2_path in model_2_paths:
         _embeddings_2 = []
-        for path in model_2_path.rglob("*embeddings.npy"):
+        for path in model_2_path.rglob("*embeddings.*"):
             if dataset_filter is None or re.search(dataset_filter, path.name):
                 path = str(path)[len(str(model_2_path)) + 1 :]
                 _embeddings_2.append(path)
@@ -156,23 +156,7 @@ def main():
     model_Y_path = args.embeddings_dir / args.model_Y
     model_X_paths = [args.embeddings_dir / model for model in args.model_X]
 
-    if args.fixed_embeddings == "Common":
-        embeddings_paths = {
-            # "dennlinger/wiki-paragraphs/validation/embeddings.npy",
-            "mteb/amazon_polarity/test/embeddings.npy",
-            "mteb/banking77/test/embeddings.npy",
-            "mteb/biosses-sts/test/embeddings.npy",
-            "mteb/sickr-sts/test/embeddings.npy",
-            "mteb/sts12-sts/test/embeddings.npy",
-            "mteb/sts13-sts/test/embeddings.npy",
-            "mteb/sts14-sts/test/embeddings.npy",
-            "mteb/sts15-sts/test/embeddings.npy",
-            "mteb/stsbenchmark-sts/test/embeddings.npy",
-            "mteb/stsbenchmark-sts/validation/embeddings.npy",
-            "snli/test/embeddings.npy",
-            "snli/validation/embeddings.npy",
-        }
-    elif args.fixed_embeddings == "All":
+    if args.fixed_embeddings == "All":
         embeddings_paths = find_embedding_paths(
             model_Y_path, model_X_paths, args.dataset_filter
         )

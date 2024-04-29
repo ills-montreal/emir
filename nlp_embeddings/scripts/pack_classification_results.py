@@ -46,7 +46,8 @@ def main():
                 classification_results["success"].agg(["mean"]).to_frame()
             )
 
-        classification_results = classification_results.drop("logits", axis=1)
+        if "logits" in classification_results.columns:
+            classification_results = classification_results.drop("logits", axis=1)
 
         metadata["id"] = idx
         classification_results["id"] = idx
