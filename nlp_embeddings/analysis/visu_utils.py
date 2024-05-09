@@ -276,6 +276,11 @@ ALL_MODELS = [
 ]
 
 
+ALL_BUT_RANDOM = list(
+    set(ALL_MODELS) - set(["HuggingFaceM4/tiny-random-LlamaForCausalLM"])
+)
+
+
 CROISSANT_CHECKPOINT_MODELS = [
     "croissantllm/base_5k",
     "croissantllm/base_50k",

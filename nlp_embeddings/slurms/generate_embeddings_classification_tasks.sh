@@ -92,9 +92,9 @@ output_dir=$1
 #for model in "NousResearch/Llama-2-7b-hf" "togethercomputer/LLaMA-2-7B-32K" "google/gemma-7b" "google/gemma-7b-it"; do
 # "paws-x;en" "sst2" "tweet_eval;emoji" "tweet_eval;emotion" "tweet_eval;sentiment" "rotten_tomatoes
 # "imdb" "clinc_oos;plus"
-# "ag_news"
+# "ag_news"  "dair-ai/emotion"
 for model in  jspringer/echo-mistral-7b-instruct-lasttoken NousResearch/Llama-2-7b-hf togethercomputer/LLaMA-2-7B-32K google/gemma-7b google/gemma-7b-it google/gemma-7b google/gemma-7b-it Salesforce/SFR-Embedding-Mistral GritLM/GritLM-7B; do
-  for dataset in   "banking77" "dair-ai/emotion/"; do
+  for dataset in   "banking77"; do
     sbatch --job-name=emb_classif \
       --account=ehz@a100 \
       --gres=gpu:1 \
@@ -102,7 +102,7 @@ for model in  jspringer/echo-mistral-7b-instruct-lasttoken NousResearch/Llama-2-
       --no-requeue \
       --cpus-per-task=8 \
       --hint=nomultithread \
-      --time=10:00:00 \
+      --time=6:00:00 \
       -C a100 \
       --output=jobinfo_emb/testlib%j.out \
       --error=jobinfo_emb/testlib%j.err \
@@ -112,7 +112,7 @@ for model in  jspringer/echo-mistral-7b-instruct-lasttoken NousResearch/Llama-2-
         --dataset '${dataset}' \
         --classification_task \
         --output_dir ${output_dir} \
-        --batch_size 8"
+        --batch_size 16"
   done
 done
 

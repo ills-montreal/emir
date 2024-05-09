@@ -87,6 +87,12 @@ TASKS_DATASET = {
         "task": "Emotion classification",
         "num_classes": 6,
     },  # text, label
+    "banking77": {
+        "dataset_name": "mteb/banking77",
+        "config": None,
+        "task": "Intent classification",
+        "num_classes": 77,
+    },  # text, label
 }
 
 
@@ -121,6 +127,8 @@ def load_emd_classif_dataset(task_name):
     elif task_name == "tweet_eval;emotion":
         pass
     elif task_name == "tweet_eval;sentiment":
+        pass
+    elif task_name == "banking77":
         pass
     elif task_name == "clinc_oos;plus":
         for split in splits:
