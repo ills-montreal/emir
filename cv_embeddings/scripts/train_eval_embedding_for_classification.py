@@ -4,7 +4,6 @@ Train small models that takes embeddings as input for classification tasks.
 
 import argparse
 import os
-from typing import Any
 
 import pandas as pd
 from lightning.pytorch.utilities.types import STEP_OUTPUT
@@ -15,7 +14,6 @@ os.environ["WANDB_MODE"] = "offline"
 
 
 from pathlib import Path
-from emb_datasets import load_emd_classif_dataset, TASKS_DATASET
 import lightning as L
 from lightning.pytorch.loggers import WandbLogger
 import torch
@@ -172,7 +170,7 @@ def parse_args():
 def main():
     args = parse_args()
     wandb.init(
-        project="emir-nlp-embeddings-classification",
+        project="emir-cv-embeddings-classification",
         config=vars(args) | {"model_name": args.model},
     )
     unique_id = wandb.run.id
@@ -188,7 +186,7 @@ def main():
 
         # load embeddings
         embeddings = {
-            split: torch.tensor(torch.load(base_dir / split / "embeddings.npy"))
+            split: torch.tensor(torch.load(base_dir / split / "embeddings.pk"))
             for split in splits
         }
 
@@ -201,7 +199,7 @@ def main():
         )
 
     labels = {
-        split: torch.tensor(torch.load(base_dir / split / "labels.npy")).view(-1)
+        split: torch.tensor(torch.load(base_dir / split / "labels.pt")).view(-1)
         for split in splits
     }
 
