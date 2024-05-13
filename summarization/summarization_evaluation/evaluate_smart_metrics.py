@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from bert_score import BERTScorer
+
+from smart_eval.scorer import SmartScorer
 
 
 def sanitize_model_name(model_name: str) -> str:
@@ -55,21 +56,20 @@ def evaluate_bartbert(df, device="cuda"):
     texts = df.text.tolist()
     summaries = df.summary.tolist()
 
-    scorer = BERTScorer(lang="en", rescale_with_baseline=True, device=device)
+    scorer = SmartScorer(smart_types=["smart1", "smart2", "smartL"])
 
-    metrics = {"BERTScore": [], "BERTScore Recall": [], "BERTScore Precision": []}
+    metrics = {"SMART1": [], "SMART2": [], "SMARTL": []}
     for i in range(len(texts)):
         texts[i] = texts[i].replace("\n", " ")
         summaries[i] = summaries[i].replace("\n", " ")
 
-        print(len(texts[i]))
-        print(len(summaries[i]))
+        scores = scorer.smart_score([summaries[i]], [texts[i]])
 
-        P, R, F1 = scorer.score([summaries[i]], [texts[i]])
+        print(scores)
 
-        metrics["BERTScore"].append(F1.mean().item())
-        metrics["BERTScore Recall"].append(R.mean().item())
-        metrics["BERTScore Precision"].append(P.mean().item())
+        metrics["SMART1"].append(scores["smart1"]["fmeasure"])
+        metrics["SMART2"].append(scores["smart2"]["fmeasure"])
+        metrics["SMARTL"].append(scores["smartL"]["fmeasure"])
 
     # compute the mean of the metrics
     metrics = {k: sum(v) / len(v) for k, v in metrics.items()}
