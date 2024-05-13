@@ -9,11 +9,11 @@ import selfies as sf
 
 from utils import MolecularFeatureExtractor
 from precompute_3d import precompute_3d
-from utils.descriptors import DESCRIPTORS, can_be_2d_input
+from utils.descriptors import can_be_2d_input
 from utils.molfeat import get_molfeat_transformer
 
 
-from tdc_dataset import get_dataset
+from molecule.utils.tdc_dataset import get_dataset
 
 parser = argparse.ArgumentParser(
     description="Compute ",
@@ -25,7 +25,7 @@ parser.add_argument(
     type=str,
     nargs="+",
     default=[
-        "Solubility_AqSolDB",
+        "BindingDB_Kd",
     ],
 )
 
@@ -33,7 +33,7 @@ parser.add_argument(
     "--descriptors",
     type=str,
     nargs="+",
-    default=DESCRIPTORS,
+    default=["ecfp", "maccs"],
     required=False,
     help="List of descriptors to compute",
 )
@@ -73,6 +73,11 @@ def main():
             valid_smiles = []
             valid_mols = []
             for i, s in enumerate(tqdm(smiles, desc="Generating graphs")):
+                mol = mols[i]
+                #compute molecular weight and limit it under 1000
+                desc = dm.descriptors.compute_many_descriptors(mol)
+                if desc["mw"] > 1000:
+                    continue
                 try:
                     _ = sf.encoder(s)
                     if can_be_2d_input(s, mols[i]) and not "." in s:
@@ -108,8 +113,7 @@ def main():
                     device="cpu",
                     length=length,
                     dataset=dataset,
-                    mds_dim=0,
-                    data_dir=data_path,
+                    data_dir=args.data_path,
                 )
                 if not os.path.exists(f"{data_path}/{desc}_{length}.npy"):
                     descriptor = feature_extractor.get_features(

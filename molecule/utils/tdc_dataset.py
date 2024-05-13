@@ -1,5 +1,6 @@
 import pandas as pd
 from tdc.single_pred import Tox, ADME, HTS, QM
+from tdc.multi_pred import DTI
 from tdc.generation import MolGen
 
 from tdc.utils import retrieve_label_name_list
@@ -59,15 +60,35 @@ correspondancy_dict = {
     "MOSES": MolGen,
     "ZINC": MolGen,
     "ChEMBL": MolGen,
+    "DAVIS": DTI,
+    "BindingDB_Kd": DTI,
+    "BindingDB_IC50": DTI,
+    "KIBA": DTI,
+    "BindingDB_Ki": DTI,
 }
+
+correspondancy_dict_DTI = {
+    "DAVIS": DTI,
+    "BindingDB_Kd": DTI,
+    "BindingDB_IC50": DTI,
+    "KIBA": DTI,
+    "BindingDB_Ki": DTI,
+}
+
+THRESHOLD_MIN_SAMPLES = 128
 
 
 def get_dataset(dataset: str):
     try:
         data = correspondancy_dict[dataset](name=dataset)
-        if dataset in ["DAVIS"]:
-            data.harmonize_affinities(mode="max_affinity")
-        df = data.get_data()
+        if dataset in correspondancy_dict_DTI.keys():
+            data.convert_to_log(
+                form="binding"
+            )
+            df = data.harmonize_affinities(mode="max_affinity")
+        else:
+            df = data.get_data()
+
     except Exception as e:
         if e.args[0].startswith(
             "Please select a label name. You can use tdc.utils.retrieve_label_name_list"
@@ -79,10 +100,16 @@ def get_dataset(dataset: str):
                     correspondancy_dict[dataset](name=dataset, label_name=l).get_data()
                 )
             df = pd.concat(df).drop_duplicates("Drug")
+
+    if hasattr(df, "Target_ID"):
+        allowed_targets = df["Target_ID"].value_counts()[df["Target_ID"].value_counts() > THRESHOLD_MIN_SAMPLES].index
+        df = df[df["Target_ID"].isin(allowed_targets)]
     return df
 
 
 def get_dataset_split(dataset: str, random_seed: int = 42, method="random"):
+    if dataset in correspondancy_dict_DTI.keys():
+        return get_dataset_split_DTI(dataset, random_seed=random_seed)
     try:
         split = correspondancy_dict[dataset](name=dataset).get_split(
             seed=random_seed, method=method
@@ -112,3 +139,19 @@ def get_dataset_split(dataset: str, random_seed: int = 42, method="random"):
             return split
         else:
             raise e
+
+
+def get_dataset_split_DTI(dataset, random_seed=42):
+    data = correspondancy_dict_DTI[dataset](name=dataset)
+    data.convert_to_log(form="binding")
+    data = data.harmonize_affinities(mode="max_affinity")
+    split = []
+    for id in data["Target_ID"].unique():
+        subdata = data[data["Target_ID"] == id][["Drug", "Target_ID", "Y"]]
+        if subdata.shape[0]<THRESHOLD_MIN_SAMPLES:
+            continue
+        print(subdata.shape)
+        split.append(
+            {"train": data[data["Target_ID"] == id][["Drug", "Target_ID", "Y"]]}
+        )
+    return split

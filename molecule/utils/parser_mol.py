@@ -50,7 +50,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--dataset",
         type=str,
-        default="ClinTox",
+        default="BindingDB_Kd",
         help="Dataset to use",
     )
 
@@ -88,7 +88,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--marg-modes", type=int, default=2)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch-size", type=int, default=1024)
-    parser.add_argument("--device", type=str, dCLUSTER_PATHefault="cuda")
+    parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--n-epochs", type=int, default=100)
     parser.add_argument("--n-epochs-marg", type=int, default=100)
     parser.add_argument("--ff-layers", type=int, default=2)
@@ -101,7 +101,7 @@ def add_knife_args(parser: argparse.ArgumentParser):
     parser.add_argument("--stopping-criterion", type=str, default="early_stopping")
     parser.add_argument("--eps", type=float, default=1e-5)
     parser.add_argument("--n-epochs-stop", type=int, default=5)
-    parser.add_argument("--margin-lr", type=float, default=0.001)
+    parser.add_argument("--margin-lr", type=float, default=0.01)
     return parser
 
 
@@ -140,9 +140,9 @@ def add_FF_downstream_args(parser: argparse.ArgumentParser):
     :param parser:
     :return:
     """
-    parser.add_argument("--hidden-dim", type=int, default=32)
+    parser.add_argument("--hidden-dim", type=int, default=64)
     parser.add_argument("--n-layers", type=int, default=1)
-    parser.add_argument("--d-rate", type=float, default=0.0)
+    parser.add_argument("--d-rate", type=float, default=0.2)
     parser.add_argument("--norm", type=str, default="layer")
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch-size", type=int, default=128)

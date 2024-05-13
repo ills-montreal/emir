@@ -10,7 +10,7 @@ import time
 from .descriptors import DESCRIPTORS, CONTINUOUS_DESCRIPTORS
 from .model_factory import ModelFactory
 from .scattering_wavelet import get_scatt_from_path
-
+from .molfeat import get_molfeat_descriptors
 
 class MolecularFeatureExtractor:
     def __init__(
@@ -86,9 +86,18 @@ class MolecularFeatureExtractor:
                         smiles
                     ), "The number of smiles and the number of embeddings are not the same."
                 else:
-                    raise ValueError(
-                        f"File {self.data_dir}/{transformer_name}_{length}.npy does not exist."
+                    molecular_embedding = get_molfeat_descriptors(
+                        smiles,
+                        transformer_name,
+                        mols=mols,
+                        dataset=dataset,
+                        length=length,
                     )
+                    np.save(
+                        f"{self.data_dir}/{transformer_name}_{length}.npy",
+                        molecular_embedding.cpu().numpy(),
+                    )
+
             else:
                 molecular_embedding = torch.tensor(
                     np.load(os.path.join(self.vae_path, f"{transformer_name}.npy")),

@@ -9,12 +9,11 @@ import argparse
 
 import json
 import datamol as dm
-import pandas as pd
 import wandb
 import yaml
 
 from molecule.utils.knife_utils import compute_all_mi
-from molecule.parser_mol import (
+from molecule.utils.parser_mol import (
     add_eval_cli_args,
     add_knife_args,
 )

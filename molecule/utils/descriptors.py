@@ -1,4 +1,4 @@
-from molecule.moleculenet_encoding import mol_to_graph_data_obj_simple
+from molecule.utils.moleculenet_encoding import mol_to_graph_data_obj_simple
 
 
 DESCRIPTORS = [

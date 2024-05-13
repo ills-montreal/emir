@@ -5,7 +5,6 @@ import pandas as pd
 import datamol as dm
 import torch
 import argparse
-import yaml
 
 from molecule.utils.evaluation import (
     get_dataloaders,
@@ -13,7 +12,7 @@ from molecule.utils.evaluation import (
     FFConfig,
     FF_trainer,
 )
-from molecule.tdc_dataset import get_dataset_split
+from molecule.utils.tdc_dataset import get_dataset_split
 
 from molecule.utils import MolecularFeatureExtractor
 from molecule.utils.knife_utils import get_embedders
@@ -238,7 +237,8 @@ def launch_evaluation(
             "embedder": [embedder_name],
             "dataset": [dataset],
             "length": [length],
-            "metric": test_metric,
+            "metric_test": test_metric,
+            "metric": trainer.best_metric
         }
     )
     return df_results
@@ -297,15 +297,14 @@ def main(args):
                     )
 
     df = pd.concat(final_res).reset_index(drop=True)
+    wandb.log({"results_df": wandb.Table(dataframe=df)})
     df = df.groupby(["embedder", "dataset", "length"]).mean().reset_index()
 
     wandb.log({"mean_metric": df.groupby("embedder")["metric"].mean().mean()})
-    df = wandb.Table(dataframe=df)
-    wandb.log({"results_df": df})
 
 
 if __name__ == "__main__":
-    from parser_mol import add_downstream_args, add_FF_downstream_args
+    from molecule.utils.parser_mol import add_downstream_args, add_FF_downstream_args
 
     parser = argparse.ArgumentParser(
         description="Launch the evaluation of a downstream model",

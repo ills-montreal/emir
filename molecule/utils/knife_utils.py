@@ -14,11 +14,11 @@ import datamol as dm
 from emir.estimators import KNIFEEstimator, KNIFEArgs
 
 from molecule.models.transformers_models import PIPELINE_CORRESPONDANCY
-from parser_mol import (
+from molecule.utils.parser_mol import (
     generate_knife_config_from_args,
 )
-from models.model_paths import get_model_path
-from utils import MolecularFeatureExtractor
+from molecule.models.model_paths import get_model_path
+from molecule.utils import MolecularFeatureExtractor
 from molecule.models.denoising_models import name2path
 
 import logging
@@ -74,7 +74,7 @@ def get_knife_preds(
     knife_estimator = KNIFEEstimator(
         knife_config, x1.shape[1], x2.shape[1], precomputed_marg_kernel=kernel_marg
     )  # Learn x2 from x1
-    mi, m, c = knife_estimator.eval(x1.float(), x2.float(), record_loss=True, name=name)
+    mi, m, c = knife_estimator.eval(x1.float(), x2.float())
     return (
         mi,
         m,
@@ -110,7 +110,7 @@ def get_knife_marg_kernel(
         knife_config, x.shape[1], x.shape[1]
     )  # Learn x2 from x1
     _ = knife_estimator.eval(
-        x.float(), x.float(), record_loss=True, fit_only_marginal=True, name=emb_key
+        x.float(), x.float(), fit_only_marginal=True
     )
     marg_ent = torch.tensor(knife_estimator.recorded_marg_ent, device="cpu")
     df_run_marg_kernel = pd.DataFrame(

@@ -220,6 +220,7 @@ class FF_trainer():
     def __init__(self, model):
         self.model = model
         self.best_ckpt = model.state_dict()
+        self.best_metric = 0
 
     def train_model(self, dataloader_train, dataloader_val, p_bar_name="Epochs"):
         n_epochs = min(int(self.model.config.n_epochs * 5000 / self.model.task_size)+1, self.model.config.n_epochs)
@@ -230,9 +231,11 @@ class FF_trainer():
             if self.model.task == "classification" and i > 0:
                 if self.model.val_roc[-1] > max(self.model.val_roc[:-1]):
                     self.best_ckpt = self.model.state_dict()
+                    self.best_metric = self.model.val_roc[-1]
             elif self.model.task == "regression" and i > 0:
                 if self.model.r2_val[-1] > max(self.model.r2_val[:-1]):
                     self.best_ckpt = self.model.state_dict()
+                    self.best_metric = self.model.r2_val[-1]
 
     def eval_on_test(self, dataloader_test):
         self.model.load_state_dict(self.best_ckpt)
