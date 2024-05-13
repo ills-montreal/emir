@@ -1,41 +1,59 @@
 program: main_downstream.py
 method: grid
 metric:
-  name: mean_roc
+  name: mean_metric
   goal: maximize
 parameters:
-  hidden-dim:
-    values: [8,16,32,64]
   n-layers:
-    values: [0,1,2,3,4]
+    values: [1, 2, 3]
+  hidden-dim:
+    values: [4, 8, 16, 32, 64, 128]
   d-rate:
-    values: [0,0.1,0.2]
-  norm:
-    values: ["layer"]
-  lr:
-    values: [1e-3]
-  batch-size:
-    values: [128]
+    values: [0, 0.2]
+  n-epochs:
+    values: [200]
+  split-method:
+    values: ["scaffold"]
   datasets:
     values: [
         "hERG",
+        "hERG_Karim",
+        "AMES",
         "DILI",
         "Carcinogens_Lagunin",
+        "Skin__Reaction",
+        "Tox21",
         "ClinTox",
         "PAMPA_NCATS",
         "HIA_Hou",
         "Pgp_Broccatelli",
         "Bioavailability_Ma",
         "BBB_Martins",
+        "CYP2C19_Veith",
+        "CYP2D6_Veith",
+        "CYP3A4_Veith",
+        "CYP1A2_Veith",
+        "CYP2C9_Veith",
         "CYP2C9_Substrate_CarbonMangels",
         "CYP2D6_Substrate_CarbonMangels",
         "CYP3A4_Substrate_CarbonMangels",
-      ]
-
+        "Caco2_Wang",
+        "Lipophilicity_AstraZeneca",
+        "Solubility_AqSolDB",
+        "HydrationFreeEnergy_FreeSolv",
+        "PPBR_AZ",
+        "VDss_Lombardo",
+        "Half_Life_Obach",
+        "Clearance_Hepatocyte_AZ",
+        "Clearance_Microsome_AZ",
+        "LD50_Zhu"
+    ]
 
 command:
   - ${env}
   - ${interpreter}
   - ${program}
   - ${args}
+  - --n-runs
+  - 10
 

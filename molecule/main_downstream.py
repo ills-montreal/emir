@@ -1,13 +1,18 @@
 import os
 import json
-from typing import Dict, List, Callable
+from typing import Dict, List, Callable, Optional, Tuple
 import pandas as pd
 import datamol as dm
 import torch
 import argparse
 
-from molecule.utils.evaluation import get_dataloaders, Feed_forward, FFConfig
-from molecule.tdc_dataset import get_dataset_split
+from molecule.utils.evaluation import (
+    get_dataloaders,
+    Feed_forward,
+    FFConfig,
+    FF_trainer,
+)
+from molecule.utils.tdc_dataset import get_dataset_split
 
 from molecule.utils import MolecularFeatureExtractor
 from molecule.utils.knife_utils import get_embedders
@@ -25,6 +30,7 @@ DATASETS_GROUP = {
         "AMES",
         "DILI",
         "Carcinogens_Lagunin",
+        "Skin__Reaction",
         "Tox21",
         "ClinTox",
     ],
@@ -42,6 +48,20 @@ DATASETS_GROUP = {
         "CYP2C9_Substrate_CarbonMangels",
         "CYP2D6_Substrate_CarbonMangels",
         "CYP3A4_Substrate_CarbonMangels",
+    ],
+    "ADME_REG": [
+        "Caco2_Wang",
+        "Lipophilicity_AstraZeneca",
+        "Solubility_AqSolDB",
+        "HydrationFreeEnergy_FreeSolv",
+        "PPBR_AZ",
+        "VDss_Lombardo",
+        "Half_Life_Obach",
+        "Clearance_Hepatocyte_AZ",
+        "Clearance_Microsome_AZ",
+    ],
+    "TOX_REG": [
+        "LD50_Zhu",
     ],
 }
 
@@ -85,7 +105,7 @@ MODELS = [
     "ChemBertMTR-5M",
     "ChemBertMTR-10M",
     "ChemBertMTR-77M",
-    #"ChemGPT-1.2B",
+    "ChemGPT-1.2B",
     "ChemGPT-19M",
     "ChemGPT-4.7M",
     "DenoisingPretrainingPQCMv4",
@@ -106,13 +126,14 @@ def preprocess_smiles(s):
 
 
 def get_split_idx(
-    dataset: str,
+    data_path: str,
     split: Dict[str, pd.DataFrame],
 ):
-    with open(f"data/{dataset}/smiles.json", "r") as f:
+    with open(os.path.join(data_path, "smiles.json"), "r") as f:
         smiles = json.load(f)
-    if os.path.exists(f"data/{dataset}/preprocessed.sdf"):
-        mols = dm.read_sdf(f"data/{dataset}/preprocessed.sdf")
+    mol_path = os.path.join(data_path, "preprocessed.sdf")
+    if os.path.exists(mol_path):
+        mols = dm.read_sdf(mol_path)
     else:
         mols = dm.to_mol(smiles)
 
@@ -145,7 +166,7 @@ def get_split_emb(
     split_emb = {}
     for key in split_idx.keys():
         split_emb[key] = {
-            "x": X[split_idx[key]["x"]],
+            "x": X[split_idx[key]["x"]].to("cpu"),
             "y": torch.tensor(split_idx[key]["y"]),
         }
     return split_emb
@@ -162,68 +183,100 @@ def launch_evaluation(
     mols: List[dm.Mol],
     embedders: Dict[str, Callable],
     plot_loss: bool = False,
+    run_num: Optional[Tuple[int, int]] = None,
 ):
     split_emb = get_split_emb(split_idx, embedders, smiles, mols, embedder_name)
 
     dataloader_train, dataloader_val, dataloader_test, input_dim = get_dataloaders(
-        split_emb, batch_size=model_config.batch_size, device=device
+        split_emb,
+        batch_size=model_config.batch_size,
+        test_batch_size=model_config.test_batch_size,
     )
     y_train = split_emb["train"]["y"]
     if len(y_train.shape) == 1:
         output_dim = 1
     else:
         output_dim = split_emb["train"]["y"].shape[1]
+    if dataset in DATASETS_GROUP["ADME_REG"] + DATASETS_GROUP["TOX_REG"]:
+        model = Feed_forward(
+            input_dim,
+            output_dim,
+            model_config,
+            task="regression",
+            task_size=y_train.shape[0],
+            out_train_mean=y_train.mean(),
+            out_train_std=y_train.std(),
+        )
+    else:
+        model = Feed_forward(
+            input_dim,
+            output_dim,
+            model_config,
+            task="classification",
+            task_size=y_train.shape[0],
+        )
 
-    model = Feed_forward(input_dim, output_dim, model_config)
-    model.train_model(dataloader_train, dataloader_val)
+    trainer = FF_trainer(model)
 
-    if plot_loss:
-        model.plot_loss(title=embedder_name)
+    trainer.train_model(
+        dataloader_train,
+        dataloader_val,
+        p_bar_name=f"{run_num[0]} / {run_num[1]} : \t{dataset} - {embedder_name} : ",
+    )
+
+    model = trainer.model
     for val_roc in model.val_roc:
         wandb.log({f"val_roc": val_roc})
+    for r2 in model.r2_val:
+        wandb.log({f"r2_val": r2})
+
+    test_metric = trainer.eval_on_test(dataloader_test)
 
     df_results = pd.DataFrame(
         {
-            "epoch": range(len(model.val_acc)),
-            "embedder": [embedder_name] * len(model.val_acc),
-            "dataset": [dataset] * len(model.val_acc),
-            "length": [length] * len(model.val_acc),
-            "accuracy": model.val_acc,
-            "f1": model.val_f1,
-            "roc": model.val_roc,
-            "aucpr": model.val_aucpr,
+            "embedder": [embedder_name],
+            "dataset": [dataset],
+            "length": [length],
+            "metric_test": test_metric,
+            "metric": trainer.best_metric
         }
     )
     return df_results
 
 
 def main(args):
-    model_config = FFConfig(
-        hidden_dim=args.hidden_dim,
-        n_layers=args.n_layers,
-        d_rate=args.d_rate,
-        norm=args.norm,
-        lr=args.lr,
-        batch_size=args.batch_size,
-        n_epochs=args.n_epochs,
-        device=args.device,
-    )
     final_res = []
 
     for dataset in args.datasets:
+        data_path = os.path.join(args.data_path, dataset)
+        model_config = FFConfig(
+            hidden_dim=args.hidden_dim,
+            n_layers=args.n_layers,
+            d_rate=args.d_rate,
+            norm=args.norm,
+            lr=args.lr,
+            batch_size=args.batch_size,
+            n_epochs=args.n_epochs,
+            device=args.device,
+            test_batch_size=args.test_batch_size,
+        )
+
         for random_seed in tqdm(
             range(args.n_runs), desc=f"Dataset {dataset}", position=1, leave=False
         ):
-            splits = get_dataset_split(dataset, random_seed=random_seed)
+            splits = get_dataset_split(
+                dataset, random_seed=random_seed, method=args.split_method
+            )
 
-            for embedder_name in tqdm(
-                args.embedders, desc="Running embedders", position=2, leave=False
-            ):
+            for i, embedder_name in enumerate(args.embedders):
                 for split in splits:
-                    split_idx, smiles, mols = get_split_idx(dataset, split)
+                    split_idx, smiles, mols = get_split_idx(data_path, split)
                     # Get all enmbedders
                     feature_extractor = MolecularFeatureExtractor(
-                        dataset=dataset, length=args.length, device=args.device
+                        dataset=dataset,
+                        length=args.length,
+                        device=args.device,
+                        data_dir=args.data_path,
                     )
                     embedders = get_embedders(MODELS + DESCRIPTORS, feature_extractor)
 
@@ -239,35 +292,19 @@ def main(args):
                             mols=mols,
                             embedders=embedders,
                             plot_loss=args.plot_loss,
+                            run_num=(i, len(args.embedders)),
                         )
                     )
 
     df = pd.concat(final_res).reset_index(drop=True)
-    df_grouped = (
-        df.groupby(["epoch", "embedder", "dataset", "length"]).mean().reset_index()
-    )
+    wandb.log({"results_df": wandb.Table(dataframe=df)})
+    df = df.groupby(["embedder", "dataset", "length"]).mean().reset_index()
 
-    # Find best epoch for each embedder - dataset
-    best_epoch = (
-        df_grouped.groupby(["embedder", "dataset"])
-        .apply(lambda x: x.loc[x["roc"].idxmax()])
-        .reset_index(drop=True)
-    )
-    df = df[["epoch", "embedder", "dataset", "length"]].join(
-        best_epoch.set_index(["epoch", "embedder", "dataset", "length"]),
-        on=["epoch", "embedder", "dataset", "length"],
-        how="inner",
-    )
-
-    wandb.log({"mean_roc": df.groupby("embedder")["roc"].mean().mean()})
-    df = wandb.Table(dataframe=df)
-    wandb.log({"results_df": df})
+    wandb.log({"mean_metric": df.groupby("embedder")["metric"].mean().mean()})
 
 
 if __name__ == "__main__":
-    from parser_mol import add_downstream_args, add_FF_downstream_args
-
-    wandb.init(project="Emir-downstream")
+    from molecule.utils.parser_mol import add_downstream_args, add_FF_downstream_args
 
     parser = argparse.ArgumentParser(
         description="Launch the evaluation of a downstream model",
@@ -278,6 +315,17 @@ if __name__ == "__main__":
     parser = add_FF_downstream_args(parser)
 
     args = parser.parse_args()
+
+    if args.split_method == "scaffold":
+        wandb.init(project="Emir-downstream", tags=["scaffold"])
+    else:
+        wandb.init(project="Emir-downstream")
+
+    if args.hpo_whole_config is not None:
+        config = args.hpo_whole_config.split("_")
+        args.n_layers = int(config[0])
+        args.hidden_dim = int(config[1])
+        args.d_rate = float(config[2])
 
     if args.embedders is None:
         args.embedders = MODELS  # + DESCRIPTORS

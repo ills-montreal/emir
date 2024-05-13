@@ -89,8 +89,6 @@ class KNIFEEstimator:
         # Some sanity checks
         if x.shape[0] != y.shape[0]:
             raise ValueError("x and y must have the same number of samples")
-        if fit_only_marginal and self.precomputed_marg_kernel is None:
-            raise ValueError("fit_only_marginal requires precomputed_marg_kernel")
 
         # Create model for MI estimation
         if (y == 0).logical_or(y == 1).all():
