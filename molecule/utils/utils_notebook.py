@@ -6,25 +6,21 @@ import pandas as pd
 from tqdm import tqdm as tqdm
 import numpy as np
 import json
-import sklearn
 from sklearn.decomposition import PCA
 import yaml
 import networkx as nx
 import matplotlib.patheffects as patheffects
-from netgraph import Graph, InteractiveGraph
-from networkx.algorithms.community import (
-    girvan_newman,
-    modularity_max,
-    louvain_communities,
-)
+from netgraph import Graph
+from networkx.algorithms.community import louvain_communities
 import datamol as dm
-
+from scipy.cluster.hierarchy import linkage
+from autorank import autorank
 
 from utils import MolecularFeatureExtractor
 from models.model_paths import get_model_path
 from main import GROUPED_MODELS
 
-LATEX_FIG_PATH = "/home/philippe/InfEmb/emir-embedding-comparison/fig"
+LATEX_FIG_PATH = "../../emir-embedding-comparison/fig"
 
 TASK_denomination = {
     "hERG": ["Tox", "Classification", 648],
@@ -154,50 +150,6 @@ def plot_embeddings(
     plt.show()
 
 
-def get_loss_df(
-    DATASET,
-    results_dir_list,
-    LENGTH=1024,
-    use_VAE=True,
-    VAE_dim=64,
-    args_to_add=[
-        "cond_modes",
-        "marg_modes",
-        "ff_layers",
-        "ff_hidden_dim",
-        "batch_size",
-    ],
-):
-    full_df_loss_cond = []
-    full_df_loss_marg = []
-
-    for results_dir in tqdm(results_dir_list):
-        RESULTS_PATH = f"results/{DATASET}/{LENGTH}/{use_VAE}_{VAE_dim}/{results_dir}"
-
-        with open(RESULTS_PATH + "/args.yaml", "r") as f:
-            args = yaml.load(f, Loader=yaml.FullLoader)
-        dir_path = os.path.join(RESULTS_PATH, "losses")
-
-        for file in os.listdir(dir_path):
-            if file.endswith(".csv"):
-                file_split = file[:-4].split("_")
-                if file_split[-1] == "marg":
-                    df_tmp = pd.read_csv(os.path.join(dir_path, file))
-                    for arg in args_to_add:
-                        df_tmp[arg] = args[arg]
-                    full_df_loss_marg.append(df_tmp)
-                else:
-                    df_tmp = pd.read_csv(os.path.join(dir_path, file))
-                    for arg in args_to_add:
-                        df_tmp[arg] = args[arg]
-                    full_df_loss_cond.append(df_tmp)
-
-    full_df_loss_marg = pd.concat(full_df_loss_marg)
-    full_df_loss_cond = pd.concat(full_df_loss_cond)
-
-    return full_df_loss_marg, full_df_loss_cond
-
-
 def get_MI_df(
     DATASET,
     results_dir_list,
@@ -248,9 +200,6 @@ def get_MI_df(
     df["I(Y->X)/dim"] = df["I(Y->X)"] / df["X_dim"]
 
     return df.fillna(0)
-
-
-from scipy.cluster.hierarchy import linkage
 
 
 def plot_cmap(
@@ -444,8 +393,9 @@ def plot_com(
     fig, ax = plt.subplots(figsize=(figsize, figsize))
     node_layout_kwargs = dict(node_to_community=node_to_community, pad_by=com_pad_by)
 
-
-    node_to_label = {node: node if node in nodes_to_display else "" for node in G.nodes()}
+    node_to_label = {
+        node: node if node in nodes_to_display else "" for node in G.nodes()
+    }
 
     graph = Graph(
         G,
@@ -477,9 +427,6 @@ def plot_com(
         format="pdf",
         bbox_inches="tight",
     )
-
-
-from autorank import autorank
 
 
 def get_ranked_df(
@@ -698,56 +645,27 @@ def get_DTI_rank_df(
 
 
 def process_dataset_name(dataset):
-    return dataset.replace(
-            "CarbonMangels", "Carb."
-        ).replace(
-            "Substrate", "Sub."
-        ).replace(
-            "_AstraZeneca",
-            ""
-        ).replace(
-            "_AZ",
-            ""
-        ).replace(
-            "HydrationFreeEnergy_",
-            ""
-        ).replace(
-            "__",
-            " "
-        ).replace(
-            "_",
-            " "
-        ).replace(
-            "Clearance",
-            "Clear."
-        ).replace(
-        "NCATS",
-        ""
-    ).replace(
-        "Lagunin",
-        ""
-    ).replace(
-        "Broccatelli",
-        ""
-    ).replace(
-        "Ma",
-        ""
-    ).replace(
-        "Hou",
-        ""
+    return (
+        dataset.replace("CarbonMangels", "Carb.")
+        .replace("Substrate", "Sub.")
+        .replace("_AstraZeneca", "")
+        .replace("_AZ", "")
+        .replace("HydrationFreeEnergy_", "")
+        .replace("__", " ")
+        .replace("_", " ")
+        .replace("Clearance", "Clear.")
+        .replace("NCATS", "")
+        .replace("Lagunin", "")
+        .replace("Broccatelli", "")
+        .replace("Ma", "")
+        .replace("Hou", "")
     )
 
+
 def prerpocess_emb_name(x):
-    return x.replace(
-        "DenoisingPretrainingPQCMv4",
-        "3D-denoising"
-    ).replace(
-        "Chem",
-        ""
-    ).replace(
-        "ThreeDInfomax",
-        "3D-Infomax"
-    ).replace(
-        "_OGB",
-        ""
+    return (
+        x.replace("DenoisingPretrainingPQCMv4", "3D-denoising")
+        .replace("Chem", "")
+        .replace("ThreeDInfomax", "3D-Infomax")
+        .replace("_OGB", "")
     )
