@@ -54,7 +54,7 @@ def make_table_pivot(metric, df):
     table = df
     table = (
         table[["model_1", "model_2", metric]]
-        .pivot("model_1", "model_2", metric)
+        .pivot(columns="model_1", index="model_2", values=metric)
         .fillna(0)
     )
 
@@ -93,7 +93,7 @@ def make_rankings_table(
     table = make_table_pivot(metric, df)
 
     informativeness_ranking = (
-        table.quantile(q, axis=1)
+        table.quantile(q, axis=0)
         .sort_values(ascending=False)
         .to_frame()
         .rename(columns={q: 0})
@@ -281,6 +281,7 @@ ALL_BUT_RANDOM = list(
 )
 
 
+
 CROISSANT_CHECKPOINT_MODELS = [
     "croissantllm/base_5k",
     "croissantllm/base_50k",
@@ -295,4 +296,54 @@ GEMMA_MODELS = [
     "google/gemma-2b-it",
     "google/gemma-7b",
     "google/gemma-7b-it",
+]
+TO_DISPLAY_GRAPH = [
+    "croissantllm/CroissantCool",
+    "croissantllm/CroissantLLMBase",
+
+    "google/gemma-7b-it",
+    "google/gemma-7b",
+    "google/gemma-2b-it",
+    "google/gemma-2b",
+
+    "Salesforce/SFR-Embedding-Mistral",
+    # UAE
+    "WhereIsAI/UAE-Large-V1",
+    # sf model
+    "jamesgpt1/sf_model_e5",
+    # average word
+    "sentence-transformers/average_word_embeddings_glove.6B.300d",
+
+    # allen ai
+    "sentence-transformers/allenai-specter",
+
+    # gtr
+    "sentence-transformers/gtr-t5-base",
+    "sentence-transformers/gtr-t5-large",
+    "sentence-transformers/gtr-t5-xl",
+
+
+    # Sentence transfo
+    "sentence-transformers/LaBSE",
+
+    # echo mistral
+    "jspringer/echo-mistral-7b-instruct-lasttoken",
+
+    # e5
+    "intfloat/e5-small",
+    "intfloat/e5-large-v2",
+
+    # bloom
+    "izhx/udever-bloom-560m",
+
+    # llama
+    "NousResearch/Llama-2-7b-hf",
+
+
+
+
+
+    # stella
+
+    "infgrad/stella-base-en-v2",
 ]
