@@ -5,10 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "emir"
 version = "0.0.1"
-authors = [
-    { name = "Maxime Darrin", email = "maxime.darrin@outlook.com"},
-    {name = "Philippe Formont", email = ""},
-]
+authors = []
 description = ""
 readme = "Readme.md"
 requires-python = ">=3.10"
