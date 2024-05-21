@@ -6,24 +6,21 @@ import pandas as pd
 from tqdm import tqdm as tqdm
 import numpy as np
 import json
-import sklearn
 from sklearn.decomposition import PCA
 import yaml
 import networkx as nx
 import matplotlib.patheffects as patheffects
-from netgraph import Graph, InteractiveGraph
-from networkx.algorithms.community import (
-    girvan_newman,
-    modularity_max,
-    louvain_communities,
-)
-
+from netgraph import Graph
+from networkx.algorithms.community import louvain_communities
+import datamol as dm
+from scipy.cluster.hierarchy import linkage
+from autorank import autorank
 
 from utils import MolecularFeatureExtractor
 from models.model_paths import get_model_path
 from main import GROUPED_MODELS
 
-LATEX_FIG_PATH = "/latex/emir-embedding-comparison/fig"
+LATEX_FIG_PATH = "../../emir-embedding-comparison/fig"
 
 TASK_denomination = {
     "hERG": ["Tox", "Classification", 648],
@@ -94,17 +91,38 @@ MODELS = [
 MODELS_PATH = get_model_path(models=MODELS)
 
 
-def plot_embeddings(DATASET, MODELS=MODELS, n_cols=4, figsize=5, alpha=0.5):
+def plot_embeddings(
+    DATASET,
+    MODELS=MODELS,
+    n_cols=4,
+    figsize=5,
+    alpha=0.5,
+    n_mols=10000,
+    desc="mw",
+    min_hue=0,
+    max_hue=1,
+):
     with open(f"data/{DATASET}/smiles.json", "r") as f:
         smiles = json.load(f)
 
     fig, axes = plt.subplots(
-        n_cols, len(MODELS) // n_cols, figsize=(figsize*n_cols/2, figsize)
+        n_cols, len(MODELS) // n_cols, figsize=(figsize * n_cols / 2, figsize)
     )
     axes = axes.flatten()
+    random_idx = np.random.choice(len(smiles), n_mols, replace=False)
+    smiles_cons = [smiles[i] for i in random_idx]
+    mols = [dm.to_mol(s) for s in smiles_cons]
+    df_desc = dm.descriptors.batch_compute_many_descriptors(mols)
+    hue = (df_desc[desc] - df_desc[desc].min()) / (
+        df_desc[desc].max() - df_desc[desc].min()
+    )
+    hue = hue.clip(min_hue, max_hue)
+
     for i, model in enumerate(MODELS):
         print(model)
         embeddings = np.load(f"data/{DATASET}/{model}.npy", mmap_mode="r")
+        embeddings = embeddings[random_idx]
+
         # nromalize embeddings
         embeddings = (embeddings - embeddings.mean(axis=0)) / (
             embeddings.std(axis=0) + 1e-8
@@ -112,14 +130,15 @@ def plot_embeddings(DATASET, MODELS=MODELS, n_cols=4, figsize=5, alpha=0.5):
         pca = PCA(n_components=2)
         embeddings_pca = pca.fit_transform(embeddings)
         df = pd.DataFrame(embeddings_pca, columns=[f"PC{i}" for i in range(1, 3)])
-        df["smiles"] = smiles
+        df["smiles"] = smiles_cons
         # using pyplot
+
         sns.scatterplot(
             data=df,
             x="PC1",
             y="PC2",
             ax=axes[i],
-            # hue=df_desc["sas"],
+            hue=hue,
             cmap="viridis",
             legend=False,
             alpha=alpha,
@@ -129,50 +148,6 @@ def plot_embeddings(DATASET, MODELS=MODELS, n_cols=4, figsize=5, alpha=0.5):
         axes[i].set_ylabel("PC2")
     plt.tight_layout()
     plt.show()
-
-
-def get_loss_df(
-    DATASET,
-    results_dir_list,
-    LENGTH=1024,
-    use_VAE=True,
-    VAE_dim=64,
-    args_to_add=[
-        "cond_modes",
-        "marg_modes",
-        "ff_layers",
-        "ff_hidden_dim",
-        "batch_size",
-    ],
-):
-    full_df_loss_cond = []
-    full_df_loss_marg = []
-
-    for results_dir in tqdm(results_dir_list):
-        RESULTS_PATH = f"results/{DATASET}/{LENGTH}/{use_VAE}_{VAE_dim}/{results_dir}"
-
-        with open(RESULTS_PATH + "/args.yaml", "r") as f:
-            args = yaml.load(f, Loader=yaml.FullLoader)
-        dir_path = os.path.join(RESULTS_PATH, "losses")
-
-        for file in os.listdir(dir_path):
-            if file.endswith(".csv"):
-                file_split = file[:-4].split("_")
-                if file_split[-1] == "marg":
-                    df_tmp = pd.read_csv(os.path.join(dir_path, file))
-                    for arg in args_to_add:
-                        df_tmp[arg] = args[arg]
-                    full_df_loss_marg.append(df_tmp)
-                else:
-                    df_tmp = pd.read_csv(os.path.join(dir_path, file))
-                    for arg in args_to_add:
-                        df_tmp[arg] = args[arg]
-                    full_df_loss_cond.append(df_tmp)
-
-    full_df_loss_marg = pd.concat(full_df_loss_marg)
-    full_df_loss_cond = pd.concat(full_df_loss_cond)
-
-    return full_df_loss_marg, full_df_loss_cond
 
 
 def get_MI_df(
@@ -225,9 +200,6 @@ def get_MI_df(
     df["I(Y->X)/dim"] = df["I(Y->X)"] / df["X_dim"]
 
     return df.fillna(0)
-
-
-from scipy.cluster.hierarchy import linkage
 
 
 def plot_cmap(
@@ -304,7 +276,12 @@ def plot_com(
     fontsize=15,
     sparsity=1,
     node_size=100,
+    scale=(1, 2),
+    communities=None,
+    nodes_to_display=None,
 ):
+    if nodes_to_display is None:
+        nodes_to_display = df_in.X.unique()
     df = df_in[df_in.X != df_in.Y].copy()
     df[weight_col] = (df[weight_col] - df[weight_col].min()) / (
         df[weight_col].max() - df[weight_col].min()
@@ -330,9 +307,9 @@ def plot_com(
             [(u, v) for u, v, d in G_un.edges(data=True) if d["weight"] == 0]
         )
 
-    communities = louvain_communities(G, resolution=com_resolution)
-    communities = list(communities)
-    print(communities)
+    if communities is None:
+        communities = louvain_communities(G, resolution=com_resolution)
+        communities = list(communities)
     cmap = sns.color_palette(
         cmap,
         as_cmap=True,
@@ -416,12 +393,16 @@ def plot_com(
     fig, ax = plt.subplots(figsize=(figsize, figsize))
     node_layout_kwargs = dict(node_to_community=node_to_community, pad_by=com_pad_by)
 
+    node_to_label = {
+        node: node if node in nodes_to_display else "" for node in G.nodes()
+    }
+
     graph = Graph(
         G,
         node_layout_kwargs=node_layout_kwargs,
         node_layout="community",
         node_color=node_color,
-        node_labels=node_labels,
+        node_labels=node_to_label,
         edge_color=edge_color,
         ax=ax,
         node_label_fontdict={"fontsize": fontsize, "fontweight": "bold"},
@@ -430,7 +411,7 @@ def plot_com(
         edge_alpha=edge_alpha,
         arrows=True,
         prettify=True,
-        scale=(1, 2),
+        scale=scale,
         edge_width=edge_width,
         node_size=node_size,
     )
@@ -442,18 +423,15 @@ def plot_com(
         )
 
     plt.savefig(
-        f"{LATEX_FIG_PATH}/molecule/MI_graph_{sparsity}.pdf",
+        f"{LATEX_FIG_PATH}/molecule/MI_graph_v2_{sparsity}.pdf",
         format="pdf",
         bbox_inches="tight",
     )
 
 
-from autorank import autorank
-
-
 def get_ranked_df(
     df,
-    path="results/TDC_ADMET.csv",
+    path="results/TDC_ADMET_SCAFF.csv",
     split_on=None,
     COLUMS_SPLIT="cond_modes",
     n_runs=10,
@@ -664,3 +642,30 @@ def get_DTI_rank_df(
             df_downs[COLUMS_SPLIT] == x
         ].embedder.map(res["meanrank_information"])
     return df_downs
+
+
+def process_dataset_name(dataset):
+    return (
+        dataset.replace("CarbonMangels", "Carb.")
+        .replace("Substrate", "Sub.")
+        .replace("_AstraZeneca", "")
+        .replace("_AZ", "")
+        .replace("HydrationFreeEnergy_", "")
+        .replace("__", " ")
+        .replace("_", " ")
+        .replace("Clearance", "Clear.")
+        .replace("NCATS", "")
+        .replace("Lagunin", "")
+        .replace("Broccatelli", "")
+        .replace("Ma", "")
+        .replace("Hou", "")
+    )
+
+
+def prerpocess_emb_name(x):
+    return (
+        x.replace("DenoisingPretrainingPQCMv4", "3D-denoising")
+        .replace("Chem", "")
+        .replace("ThreeDInfomax", "3D-Infomax")
+        .replace("_OGB", "")
+    )
