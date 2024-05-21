@@ -37,7 +37,8 @@ SMALL_MODELS = [
 ]
 
 LARGE_MODELS = [
-    "Alibaba-NLP/gte-Qwen1.5-7B-instruct" "croissantllm/base_5k",
+    "Alibaba-NLP/gte-Qwen1.5-7B-instruct",
+    # "croissantllm/base_5k",
     # "croissantllm/base_50k",
     # "croissantllm/base_100k",
     # "croissantllm/base_150k",
@@ -61,6 +62,6 @@ if __name__ == "__main__":
     # for model in SMALL_MODELS:
     #     print(f"Downloading {model}")
     #     SentenceTransformer(model, trust_remote_code=True, device="cpu")
-    for model in LARGE_MODELS:
+    for model in SMALL_MODELS + LARGE_MODELS:
         print(f"Downloading {model}")
         SentenceTransformer(model, trust_remote_code=True, device="cpu")
