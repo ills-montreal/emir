@@ -1,6 +1,6 @@
-# :pill: Usage of EMIR for molecular data
+# :pill: Model comparison for molecular data
 
-This directory contains the code to use EMIR for molecular data. The code is written in Python and uses the RDKit/Datamol library\cite{} to handle molecular data.
+This directory contains the code to compare models on molecular data. The code is written in Python and uses the RDKit/Datamol library\cite{} to handle molecular data.
 The datasets are imported from the Therapeutic Data Commons (TDC) plateform\cite{}.
 
 ## :clipboard: Installation
@@ -28,9 +28,9 @@ python precompute_molf_descriptors.py --dataset <dataset_name> --descriptors <[o
 ```
 Using this script will also preprocess the datasets, removing molecules that cannot be turned into 2D representations for our models.
 
-## :chart_with_upwards_trend: EMIR
+## :chart_with_upwards_trend: Information Sufficiency
 
-To run EMIR, you can use the following command:
+To evaluate the Information Sufficiency, you can use the following command:
 ```bash
 python main.py --dataset <dataset_name> --X <models_names> --Y <models_names> --out-dir <output_dir>
 ```
