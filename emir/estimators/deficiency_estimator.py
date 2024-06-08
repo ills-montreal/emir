@@ -113,8 +113,8 @@ class GANDeficiencyEstimator:
         fake_y = self.gen(x)
 
         # Get the critic predictions
-        critic_fake_pred = self.crit(fake_y)
-        critic_real_pred = self.crit(y)
+        critic_fake_pred = self.crit(y, fake_y)
+        critic_real_pred = self.crit(y, y)
 
         # Compute loss
 
@@ -126,18 +126,10 @@ class GANDeficiencyEstimator:
     def fit_estimator(self, x: torch.Tensor, y: torch.Tensor):
 
         # Make true and fake labels
-        true_labels = torch.ones(y.shape[0], 1)
+        true_labels = torch.ones(y.shape[0], 1) * 1
         fake_labels = torch.zeros(x.shape[0], 1)
 
         # Create the data loader
-        data_loader = FastTensorDataLoader(
-            x,
-            fake_labels,
-            y,
-            true_labels,
-            batch_size=self.args.gan_batch_size,
-            shuffle=True,
-        )
 
         # Create the optimizers
         gen_optim = torch.optim.Adam(self.gen.parameters(), lr=self.args.gen_lr)
@@ -149,6 +141,15 @@ class GANDeficiencyEstimator:
 
         # Training loop
         for epoch in range(self.args.gan_n_epochs):
+            data_loader = FastTensorDataLoader(
+                x,
+                fake_labels,
+                y,
+                true_labels,
+                batch_size=self.args.gan_batch_size,
+                shuffle=True,
+            )
+
             for x_batch, fake_labels_batch, y_batch, true_labels_batch in data_loader:
                 # Move the data to the device
                 x_batch = x_batch.to(self.args.device)
@@ -169,14 +170,16 @@ class GANDeficiencyEstimator:
 
                     _critic_loss.append(critic_loss)
 
-                self.recorded_critic_loss.append(torch.stack(_critic_loss).mean())
+                self.recorded_critic_loss.append(
+                    torch.stack(_critic_loss).mean().item()
+                )
 
                 # Train the generator
                 gen_loss = self.generator_training_step(
                     x_batch, fake_labels_batch, y_batch, true_labels_batch, gen_optim
                 )
 
-                self.recorded_gen_loss.append(gen_loss)
+                self.recorded_gen_loss.append(gen_loss.item())
 
             self.logger.info(
                 f"Epoch {epoch+1}/{self.args.gan_n_epochs}, Critic loss: {self.recorded_critic_loss[-1]}, Generator loss: {self.recorded_gen_loss[-1]}"
@@ -190,10 +193,8 @@ class GANDeficiencyEstimator:
         fake_y = self.gen(x)
 
         # Get the critic predictions
-        critic_fake_pred = self.crit(fake_y)
-        critic_real_pred = self.crit(y)
-
-        # Compute loss
+        critic_fake_pred = self.crit(y, fake_y)
+        critic_real_pred = self.crit(y, y)
 
         fake_loss = self.adversarial_loss(critic_fake_pred, fake_labels).mean()
         real_loss = self.adversarial_loss(critic_real_pred, true_labels).mean()
@@ -214,7 +215,7 @@ class GANDeficiencyEstimator:
         fake_y = self.gen(x)
 
         # Get the critic predictions
-        critic_fake_pred = self.crit(fake_y)
+        critic_fake_pred = self.crit(y, fake_y)
 
         # Compute loss
         loss = self.adversarial_loss(critic_fake_pred, true_labels).mean()
@@ -234,18 +235,10 @@ class GANTrickedDeficiencyEstimator(GANDeficiencyEstimator):
 
     def fit_estimator(self, x: torch.Tensor, y: torch.Tensor):
         # Make true and fake labels
-        true_labels = torch.ones(y.shape[0], 1)
-        fake_labels = torch.zeros(x.shape[0], 1)
+        true_labels = torch.ones(y.shape[0], 1) * 0.9
+        fake_labels = torch.ones(x.shape[0], 1) * 0.1
 
         # Create the data loader
-        data_loader = FastTensorDataLoader(
-            x,
-            fake_labels,
-            y,
-            true_labels,
-            batch_size=self.args.gan_batch_size,
-            shuffle=True,
-        )
 
         # Create the optimizers
         gen_optim = torch.optim.Adam(self.gen.parameters(), lr=self.args.gen_lr)
@@ -257,7 +250,14 @@ class GANTrickedDeficiencyEstimator(GANDeficiencyEstimator):
 
         # Training loop
         for epoch in range(self.args.gan_n_epochs):
-
+            data_loader = FastTensorDataLoader(
+                x,
+                fake_labels,
+                y,
+                true_labels,
+                batch_size=self.args.gan_batch_size,
+                shuffle=True,
+            )
             _critic_loss = []
 
             for x_batch, fake_labels_batch, y_batch, true_labels_batch in data_loader:
@@ -277,7 +277,7 @@ class GANTrickedDeficiencyEstimator(GANDeficiencyEstimator):
 
                 _critic_loss.append(critic_loss)
 
-            self.recorded_critic_loss.append(torch.stack(_critic_loss).mean())
+            self.recorded_critic_loss.append(torch.stack(_critic_loss).mean().item())
 
             _gen_loss = []
             for x_batch, fake_labels_batch, y_batch, true_labels_batch in data_loader:
@@ -293,14 +293,14 @@ class GANTrickedDeficiencyEstimator(GANDeficiencyEstimator):
 
                 _gen_loss.append(gen_loss)
 
-            self.recorded_gen_loss.append(torch.stack(_gen_loss).mean())
+            self.recorded_gen_loss.append(torch.stack(_gen_loss).mean().item())
 
             self.logger.info(
                 f"Epoch {epoch+1}/{self.args.gan_n_epochs}, Critic loss: {self.recorded_critic_loss[-1]}, Generator loss: {self.recorded_gen_loss[-1]}"
             )
 
 
-class WassersteinDeficiencyEstimator(GANTrickedDeficiencyEstimator):
+class WassersteinDeficiencyEstimator(GANDeficiencyEstimator):
 
     def __init__(self, args: GANDeficiencyArgs, x_dim: int, y_dim: int):
         super().__init__(args, x_dim, y_dim)
@@ -313,8 +313,8 @@ class WassersteinDeficiencyEstimator(GANTrickedDeficiencyEstimator):
         fake_y = self.gen(x)
 
         # Get the critic predictions
-        critic_fake_pred = self.crit(fake_y)
-        critic_real_pred = self.crit(y)
+        critic_fake_pred = self.crit(y, fake_y)
+        critic_real_pred = self.crit(y, y)
 
         # Compute loss
         loss = critic_fake_pred.mean() - critic_real_pred.mean()
@@ -336,8 +336,12 @@ class WassersteinDeficiencyEstimator(GANTrickedDeficiencyEstimator):
         # create fake y from x
         fake_y = self.gen(x)
 
+        # add noise
+        noise = torch.randn_like(fake_y) * self.args.noise_std
+        fake_y = fake_y + noise
+
         # Get the critic predictions
-        critic_fake_pred = self.crit(fake_y)
+        critic_fake_pred = self.crit(y, fake_y)
 
         # Compute loss
         loss = -critic_fake_pred.mean()
@@ -391,5 +395,27 @@ class Critic(nn.Module):
             nn.Linear(hidden_dim, 1),
         )
 
-    def forward(self, x):
+    def forward(self, _, x):
         return self.model(x)
+
+
+class SmartCritic(nn.Module):
+    def __init__(self, y: int, hidden_dim: int, n_layers: int = 3):
+        super(SmartCritic, self).__init__()
+        self.y = y
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
+
+        # Define the model
+        self.model = nn.Sequential(
+            nn.Linear(2 * y, hidden_dim),
+            nn.ReLU(),
+            *[
+                nn.Sequential(nn.Linear(hidden_dim, hidden_dim), nn.LeakyReLU())
+                for _ in range(n_layers)
+            ],
+            nn.Linear(hidden_dim, 1),
+        )
+
+    def forward(self, x, y):
+        return self.model(torch.cat([x, y], dim=1))
