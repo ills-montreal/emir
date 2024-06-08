@@ -1,1 +1,8 @@
-from .estimators import KNIFEEstimator, KNIFEArgs
+from .estimators import (
+    KNIFEEstimator,
+    KNIFEArgs,
+    GANDeficiencyArgs,
+    GANDeficiencyEstimator,
+    GANTrickedDeficiencyEstimator,
+    WassersteinDeficiencyEstimator,
+)
