@@ -41,7 +41,7 @@ class GANDeficiencyArgs:
 class GANDeficiencyEstimator:
     def __init__(self, args: GANDeficiencyArgs, x_dim: int, y_dim: int):
         """
-        \delta (X ⟶ Y)
+        \\delta (X ⟶ Y)
         """
         self.args = args
         self.logger = logging.getLogger(__name__)
@@ -132,8 +132,10 @@ class GANDeficiencyEstimator:
         # Create the data loader
 
         # Create the optimizers
-        gen_optim = torch.optim.Adam(self.gen.parameters(), lr=self.args.gen_lr)
-        critic_optim = torch.optim.Adam(self.crit.parameters(), lr=self.args.critic_lr)
+        gen_optim = torch.optim.RMSprop(self.gen.parameters(), lr=self.args.gen_lr)
+        critic_optim = torch.optim.RMSprop(
+            self.crit.parameters(), lr=self.args.critic_lr
+        )
 
         # Move the models to the device
         self.gen.to(self.args.device)
@@ -241,8 +243,8 @@ class GANTrickedDeficiencyEstimator(GANDeficiencyEstimator):
         # Create the data loader
 
         # Create the optimizers
-        gen_optim = torch.optim.Adam(self.gen.parameters(), lr=self.args.gen_lr)
-        critic_optim = torch.optim.Adam(self.crit.parameters(), lr=self.args.critic_lr)
+        gen_optim = torch.optim.AdamW(self.gen.parameters(), lr=self.args.gen_lr)
+        critic_optim = torch.optim.AdamW(self.crit.parameters(), lr=self.args.critic_lr)
 
         # Move the models to the device
         self.gen.to(self.args.device)
@@ -354,6 +356,45 @@ class WassersteinDeficiencyEstimator(GANDeficiencyEstimator):
         return loss
 
 
+class WassersteinGPDeficiencyEstimator(WassersteinDeficiencyEstimator):
+    def __init__(self, args: GANDeficiencyArgs, x_dim: int, y_dim: int):
+        super().__init__(args, x_dim, y_dim)
+
+        self.critic_gradient = vmap(
+            grad(lambda x, y: self.crit(x, y).squeeze(), argnums=1), in_dims=0
+        )
+
+    def critic_training_step(self, x, fake_labels, y, true_labels, critic_optim):
+        # Zero the gradients
+        critic_optim.zero_grad()
+
+        # create fake y from x
+        fake_y = self.gen(x)
+
+        # Get the critic predictions
+        critic_fake_pred = self.crit(y, fake_y)
+        critic_real_pred = self.crit(y, y)
+
+        # Compute loss
+        loss = critic_fake_pred.mean() - critic_real_pred.mean()
+
+        # Compute the gradient penalty
+        eps = torch.rand(y.shape[0], 1, device=self.args.device)
+        y_hat = eps * y + (1 - eps) * fake_y
+
+        gradients = self.critic_gradient(y, y_hat)
+
+        gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+
+        loss = loss + 10 * gradient_penalty
+
+        loss.backward()
+        # Step the optimizer
+        critic_optim.step()
+
+        return loss
+
+
 class Generator(nn.Module):
     def __init__(self, x_dim: int, hidden_dim: int, y_dim: int, n_layers: int = 3):
         super(Generator, self).__init__()
@@ -378,6 +419,7 @@ class Generator(nn.Module):
 
 
 class Critic(nn.Module):
+
     def __init__(self, y: int, hidden_dim: int, n_layers: int = 3):
         super(Critic, self).__init__()
         self.y = y

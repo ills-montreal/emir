@@ -4,4 +4,5 @@ from .deficiency_estimator import (
     GANDeficiencyArgs,
     GANTrickedDeficiencyEstimator,
     WassersteinDeficiencyEstimator,
+    WassersteinGPDeficiencyEstimator,
 )
