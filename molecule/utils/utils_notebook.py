@@ -105,10 +105,7 @@ def plot_embeddings(
     with open(f"data/{DATASET}/smiles.json", "r") as f:
         smiles = json.load(f)
 
-    fig, axes = plt.subplots(
-        n_cols, len(MODELS) // n_cols, figsize=(figsize * n_cols / 2, figsize)
-    )
-    axes = axes.flatten()
+
     random_idx = np.random.choice(len(smiles), n_mols, replace=False)
     smiles_cons = [smiles[i] for i in random_idx]
     mols = [dm.to_mol(s) for s in smiles_cons]
@@ -116,22 +113,28 @@ def plot_embeddings(
     hue = (df_desc[desc] - df_desc[desc].min()) / (
         df_desc[desc].max() - df_desc[desc].min()
     )
+
+    plt.hist(hue, bins=100)
+    plt.show()
+
     hue = hue.clip(min_hue, max_hue)
+    fig, axes = plt.subplots(
+        n_cols, len(MODELS) // n_cols, figsize=(figsize * n_cols / 2, figsize)
+    )
+    axes = axes.flatten()
 
     for i, model in enumerate(MODELS):
-        print(model)
         embeddings = np.load(f"data/{DATASET}/{model}.npy", mmap_mode="r")
         embeddings = embeddings[random_idx]
-
         # nromalize embeddings
         embeddings = (embeddings - embeddings.mean(axis=0)) / (
             embeddings.std(axis=0) + 1e-8
         )
+
         pca = PCA(n_components=2)
         embeddings_pca = pca.fit_transform(embeddings)
         df = pd.DataFrame(embeddings_pca, columns=[f"PC{i}" for i in range(1, 3)])
         df["smiles"] = smiles_cons
-        # using pyplot
 
         sns.scatterplot(
             data=df,
@@ -146,6 +149,7 @@ def plot_embeddings(
         axes[i].set_title(model)
         axes[i].set_xlabel("PC1")
         axes[i].set_ylabel("PC2")
+        del embeddings
     plt.tight_layout()
     plt.show()
 

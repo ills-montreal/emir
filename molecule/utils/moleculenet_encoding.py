@@ -96,3 +96,6 @@ def mol_to_graph_data_obj_simple(
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, smiles=smiles)
 
     return data
+
+
+
