@@ -10,7 +10,7 @@ import torch.nn as nn
 
 from .kernels import BaseMargKernel, BaseCondKernel
 from .feed_forward import FF
-
+from torch.profiler import record_function
 
 class GaussianMargKernel(BaseMargKernel):
     """
@@ -94,23 +94,24 @@ class GaussianCondKernel(BaseCondKernel):
             self.tri = False
 
         self.ff = FF(args, zc_dim, self.ff_hidden_dim, out_ff_dim)
+        self.tanh = nn.Tanh()
 
     def logpdf(self, z_c, z_d):  # H(z_d|z_c)
-        z_d = z_d[:, None, :]  # [N, 1, d]
+        z_d = z_d.unsqueeze(1)  # [N, 1, d]
         ff_out = self.ff(z_c)  # [N, K*(2*d+1) + tri_dim]
 
         w = torch.log_softmax(ff_out[:, : self.K], dim=-1)  # [N, K]
-        mu = ff_out[:, self.K : self.K * (self.d + 1)].reshape(
-            -1, self.K, self.d
-        )  # [N, K, d]
+        mu = ff_out[:, self.K : self.K * (self.d + 1)]  # [N, K * d]
         logvar = ff_out[:, self.K * (self.d + 1) : self.K * (2 * self.d + 1)]
         if self.use_tanh:
-            logvar = logvar.tanh()
+            logvar = self.tanh(logvar)
         var = logvar.exp().reshape(-1, self.K, self.d)
 
         # print(f"Cond : {var.min()} | {var.max()} | {var.mean()}")
 
-        z = z_d - mu  # [N, K, d]
+        z = z_d - mu.view(
+            -1, self.K, self.d
+        )  # [N, K, d]
         z = var * z
         if self.tri:
             tri = ff_out[:, -self.K * self.d**2 :].reshape(-1, self.K, self.d, self.d)

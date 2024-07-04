@@ -17,26 +17,43 @@ class FF(nn.Module):
         self.num_layers = args.ff_layers
         self.layer_norm = args.ff_layer_norm
         self.activation = args.ff_activation
-        self.stack = nn.ModuleList()
-        for l in range(self.num_layers):
-            layer = []
+        if self.residual_connection:
+            self.stack = nn.ModuleList()
+            for l in range(self.num_layers):
+                layer = []
 
-            if self.layer_norm:
-                layer.append(nn.LayerNorm(dim_input if l == 0 else dim_hidden))
+                if self.layer_norm:
+                    layer.append(nn.LayerNorm(dim_input if l == 0 else dim_hidden))
 
-            layer.append(nn.Linear(dim_input if l == 0 else dim_hidden,
-                                   dim_hidden))
-            layer.append({'tanh': nn.Tanh(), 'relu': nn.ReLU()}[self.activation])
-            layer.append(nn.Dropout(dropout_rate))
+                layer.append(nn.Linear(dim_input if l == 0 else dim_hidden, dim_hidden))
+                layer.append({"tanh": nn.Tanh(), "relu": nn.ReLU()}[self.activation])
+                layer.append(nn.Dropout(dropout_rate))
 
-            self.stack.append(nn.Sequential(*layer))
+                self.stack.append(nn.Sequential(*layer))
 
-        self.out = nn.Linear(dim_input if self.num_layers < 1 else dim_hidden,
-                             dim_output)
+            self.out = nn.Linear(
+                dim_input if self.num_layers < 1 else dim_hidden, dim_output
+            )
+        else:
+            stack = []
+            for l in range(self.num_layers):
+                if self.layer_norm:
+                    stack.append(nn.LayerNorm(dim_input if l == 0 else dim_hidden))
+
+                stack.append(nn.Linear(dim_input if l == 0 else dim_hidden, dim_hidden))
+                stack.append({"tanh": nn.Tanh(), "relu": nn.ReLU()}[self.activation])
+                stack.append(nn.Dropout(dropout_rate))
+
+            stack.append(
+                nn.Linear(dim_input if self.num_layers < 1 else dim_hidden, dim_output)
+            )
+            self.stack = nn.Sequential(*stack)
 
     def forward(self, x):
         x = x.float()
-        for layer in self.stack:
-            x = x + layer(x) if self.residual_connection else layer(x)
-        return self.out(x)
-
+        if self.residual_connection:
+            for layer in self.stack:
+                x = x + layer(x)
+            return self.out(x)
+        else:
+            return self.stack(x)
