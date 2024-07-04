@@ -51,10 +51,12 @@ class GaussianMargKernel(BaseMargKernel):
         else:
             self.weigh = nn.Parameter(weigh, requires_grad=False)
 
+        self.log_softmax = nn.LogSoftmax(dim=1)
+
     def logpdf(self, x):
         assert len(x.shape) == 2 and x.shape[1] == self.d, "x has to have shape [N, d]"
         x = x[:, None, :]
-        w = torch.log_softmax(self.weigh, dim=1)
+        w = self.log_softmax(self.weigh, dim=1)
         y = x - self.means
         logvar = self.logvar
         if self.use_tanh:
