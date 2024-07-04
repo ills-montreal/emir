@@ -86,7 +86,7 @@ class GaussianCondKernel(BaseCondKernel):
         self.K = args.cond_modes
         self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device)
 
-        out_ff_dim = self.K * (2 * self.d + 1)
+        out_ff_dim = self.K * (2 * self.d + 1) # mu: d, logvar: d, w: 1
         if args.cov_off_diagonal == "var":
             out_ff_dim += self.K * self.d**2
             self.tri = True
