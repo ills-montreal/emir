@@ -112,7 +112,7 @@ class GaussianCondKernel(BaseCondKernel):
 
         z = z_d - mu  # [N, K, d]
         z = var * z
-        if self.tri is not None:
+        if self.tri:
             tri = ff_out[:, -self.K * self.d**2 :].reshape(-1, self.K, self.d, self.d)
             z = z + torch.squeeze(
                 torch.matmul(torch.tril(tri, diagonal=-1), z[:, :, :, None]), 3
