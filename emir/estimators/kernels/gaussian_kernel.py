@@ -98,23 +98,23 @@ class GaussianCondKernel(BaseCondKernel):
 
     def logpdf(self, z_c, z_d):  # H(z_d|z_c)
         z_d = z_d.unsqueeze(1)  # [N, 1, d]
-        ff_out = self.ff(z_c)  # [N, K*(2*d+1) + tri_dim]
+        ff_out = self.ff(z_c).view(z_c.shape[0], self.K, -1)  # [N, K*(2*d+1) + tri_dim]
 
-        w = torch.log_softmax(ff_out[:, : self.K], dim=-1)  # [N, K]
-        mu = ff_out[:, self.K : self.K * (self.d + 1)]  # [N, K * d]
-        logvar = ff_out[:, self.K * (self.d + 1) : self.K * (2 * self.d + 1)]
+        w = torch.log_softmax(ff_out[:, :, 0].squeeze(-1), dim=-1)  # [N, K]
+
+        mu = ff_out[:, :, 1 : self.d + 1]  # [N, K * d]
+        logvar = ff_out[:, :, self.d + 1 : 2 * self.d + 1]
         if self.use_tanh:
-            logvar = self.tanh(logvar)
-        var = logvar.exp().reshape(-1, self.K, self.d)
+            var = self.tanh(logvar).exp()
+        else:
+            var = logvar.exp()
 
         # print(f"Cond : {var.min()} | {var.max()} | {var.mean()}")
 
-        z = z_d - mu.view(
-            -1, self.K, self.d
-        )  # [N, K, d]
+        z = z_d - mu  # [N, K, d]
         z = var * z
         if self.tri:
-            tri = ff_out[:, -self.K * self.d**2 :].reshape(-1, self.K, self.d, self.d)
+            tri = ff_out[:, :, -self.d**2 :].reshape(-1, self.K, self.d, self.d)
             z = z + torch.squeeze(
                 torch.matmul(torch.tril(tri, diagonal=-1), z[:, :, :, None]), 3
             )
