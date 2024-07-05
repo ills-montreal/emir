@@ -11,6 +11,7 @@ import torch.nn as nn
 from .kernels import BaseMargKernel, BaseCondKernel
 from .feed_forward import FF
 
+
 class GaussianMargKernel(BaseMargKernel):
     """
     Used to compute p(z_d)
@@ -21,7 +22,9 @@ class GaussianMargKernel(BaseMargKernel):
         self.K = args.marg_modes if self.optimize_mu else args.batch_size
         self.init_std = args.init_std
 
-        self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device)
+        self.logC = (
+            torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device).float()
+        )
 
         if init_samples is None:
             init_samples = self.init_std * torch.randn((self.K, self.d))
@@ -87,7 +90,7 @@ class GaussianCondKernel(BaseCondKernel):
         self.K = args.cond_modes
         self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device)
 
-        out_ff_dim = self.K * (2 * self.d + 1) # mu: d, logvar: d, w: 1
+        out_ff_dim = self.K * (2 * self.d + 1)  # mu: d, logvar: d, w: 1
         if args.cov_off_diagonal == "var":
             out_ff_dim += self.K * self.d**2
             self.tri = True
