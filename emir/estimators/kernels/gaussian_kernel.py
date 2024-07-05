@@ -10,7 +10,6 @@ import torch.nn as nn
 
 from .kernels import BaseMargKernel, BaseCondKernel
 from .feed_forward import FF
-from torch.profiler import record_function
 
 class GaussianMargKernel(BaseMargKernel):
     """
