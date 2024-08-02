@@ -61,8 +61,9 @@ class MoleOOD(nn.Module):
 
         return self.model.get_molecule_feature(batch_sub, batched_data)
 
-    def get_dataloader_from_dataset_name(self, dataset_name: str, batch_size: int = 4):
-        data_dir = f"{DATA_PATH}/{dataset_name}"
+    def get_dataloader_from_dataset_name(self, dataset_name: str, batch_size: int = 4,data_dir: str = DATA_PATH):
+        if not data_dir.endswith(dataset_name):
+            data_dir = f"{data_dir}/{dataset_name}"
 
         with open(f"{data_dir}/smiles.json", "r") as f:
             smiles = json.load(f)

@@ -8,6 +8,8 @@ import yaml
 import re
 import dgl
 
+from tqdm import tqdm
+
 
 import torch
 import torch.nn as nn
@@ -123,7 +125,7 @@ class ThreeDInfoMax(nn.Module):
         self.model.eval()
         embeddings = []
         with torch.no_grad():
-            for batch in self.test_loader:
+            for batch in tqdm(self.test_loader):
                 batch = batch.to(self.device)
                 embeddings.append(self.get_hidden_states(batch))
         return torch.cat(embeddings, dim=0)
