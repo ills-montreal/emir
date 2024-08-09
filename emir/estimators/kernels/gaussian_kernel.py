@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 
 
-
 from .kernels import BaseMargKernel, BaseCondKernel
 from .feed_forward import FF
 
@@ -102,11 +101,13 @@ class GaussianCondKernel(BaseCondKernel):
         self.tanh = nn.Tanh()
 
     def logpdf(self, z_c, z_d):  # H(z_d|z_c)
+        N = z_c.shape[0]
         z_d = z_d.unsqueeze(1)  # [N, 1, d]
         ff_out = self.ff(z_c).view(z_c.shape[0], self.K, -1)  # [N, K*(2*d+1) + tri_dim]
 
-        w = torch.log_softmax(ff_out[:, :, 0].squeeze(-1), dim=-1)  # [N, K]
-
+        w = torch.log_softmax(ff_out[:, :, 0].squeeze(-1), dim=-1).reshape(
+            N, -1
+        )  # [N, K]
         mu = ff_out[:, :, 1 : self.d + 1]  # [N, K * d]
         logvar = ff_out[:, :, self.d + 1 : 2 * self.d + 1]
         if self.use_tanh:
@@ -124,7 +125,6 @@ class GaussianCondKernel(BaseCondKernel):
                 torch.matmul(torch.tril(tri, diagonal=-1), z[:, :, :, None]), 3
             )
         z = torch.sum(z**2, dim=-1)  # [N, K]
-
         z = -z / 2 + torch.log(torch.abs(var) + 1e-8).sum(-1) + w
         z = torch.logsumexp(z, dim=-1)
         return self.logC + z
