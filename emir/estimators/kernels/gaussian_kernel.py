@@ -22,7 +22,9 @@ class GaussianMargKernel(BaseMargKernel):
         self.K = args.marg_modes if self.optimize_mu else args.batch_size
         self.init_std = args.init_std
 
-        self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device)
+        self.logC = (
+            torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device).float()
+        )
 
         if init_samples is None:
             init_samples = self.init_std * torch.randn((self.K, self.d))
@@ -51,10 +53,12 @@ class GaussianMargKernel(BaseMargKernel):
         else:
             self.weigh = nn.Parameter(weigh, requires_grad=False)
 
+        self.log_softmax = nn.LogSoftmax(dim=1)
+
     def logpdf(self, x):
         assert len(x.shape) == 2 and x.shape[1] == self.d, "x has to have shape [N, d]"
         x = x[:, None, :]
-        w = torch.log_softmax(self.weigh, dim=1)
+        w = self.log_softmax(self.weigh, dim=1)
         y = x - self.means
         logvar = self.logvar
         if self.use_tanh:
@@ -86,35 +90,41 @@ class GaussianCondKernel(BaseCondKernel):
         self.K = args.cond_modes
         self.logC = torch.tensor([-self.d / 2 * np.log(2 * np.pi)]).to(args.device)
 
-        self.mu = FF(args, zc_dim, self.ff_hidden_dim, self.K * self.d)
-        self.logvar = FF(args, zc_dim, self.ff_hidden_dim, self.K * self.d)
-
-        self.weight = FF(args, zc_dim, self.ff_hidden_dim, self.K)
-        self.tri = None
+        out_ff_dim = self.K * (2 * self.d + 1)  # mu: d, logvar: d, w: 1
         if args.cov_off_diagonal == "var":
-            self.tri = FF(args, zc_dim, self.ff_hidden_dim, self.K * self.d**2)
+            out_ff_dim += self.K * self.d**2
+            self.tri = True
+        else:
+            self.tri = False
+
+        self.ff = FF(args, zc_dim, self.ff_hidden_dim, out_ff_dim)
+        self.tanh = nn.Tanh()
 
     def logpdf(self, z_c, z_d):  # H(z_d|z_c)
-        z_d = z_d[:, None, :]  # [N, 1, d]
+        N = z_c.shape[0]
+        z_d = z_d.unsqueeze(1)  # [N, 1, d]
+        ff_out = self.ff(z_c).view(z_c.shape[0], self.K, -1)  # [N, K*(2*d+1) + tri_dim]
 
-        w = torch.log_softmax(self.weight(z_c), dim=-1)  # [N, K]
-        mu = self.mu(z_c)
-        logvar = self.logvar(z_c)
+        w = torch.log_softmax(ff_out[:, :, 0].squeeze(-1), dim=-1).reshape(
+            N, -1
+        )  # [N, K]
+        mu = ff_out[:, :, 1 : self.d + 1]  # [N, K * d]
+        logvar = ff_out[:, :, self.d + 1 : 2 * self.d + 1]
         if self.use_tanh:
-            logvar = logvar.tanh()
-        var = logvar.exp().reshape(-1, self.K, self.d)
-        mu = mu.reshape(-1, self.K, self.d)
+            var = self.tanh(logvar).exp()
+        else:
+            var = logvar.exp()
+
         # print(f"Cond : {var.min()} | {var.max()} | {var.mean()}")
 
         z = z_d - mu  # [N, K, d]
         z = var * z
-        if self.tri is not None:
-            tri = self.tri(z_c).reshape(-1, self.K, self.d, self.d)
+        if self.tri:
+            tri = ff_out[:, :, -self.d**2 :].reshape(-1, self.K, self.d, self.d)
             z = z + torch.squeeze(
                 torch.matmul(torch.tril(tri, diagonal=-1), z[:, :, :, None]), 3
             )
         z = torch.sum(z**2, dim=-1)  # [N, K]
-
         z = -z / 2 + torch.log(torch.abs(var) + 1e-8).sum(-1) + w
         z = torch.logsumexp(z, dim=-1)
         return self.logC + z
