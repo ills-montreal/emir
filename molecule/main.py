@@ -12,7 +12,7 @@ import datamol as dm
 import wandb
 import yaml
 
-from molecule.utils.knife_utils import compute_all_mi
+from molecule.utils.estimator_utils.knife_utils import compute_all_mi
 from molecule.utils.parser_mol import (
     add_eval_cli_args,
     add_knife_args,

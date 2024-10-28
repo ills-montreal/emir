@@ -15,7 +15,7 @@ from molecule.utils.downstream_evaluation import (
 from molecule.utils.tdc_dataset import get_dataset_split
 
 from molecule.utils import MolecularFeatureExtractor
-from molecule.utils.knife_utils import get_embedders
+from molecule.utils.estimator_utils.knife_utils import get_embedders
 from tqdm import tqdm
 
 import wandb
