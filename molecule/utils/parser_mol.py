@@ -48,7 +48,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--dataset",
         type=str,
-        default="BindingDB_Kd",
+        default="hERG",
         help="Dataset to use",
     )
 
@@ -62,15 +62,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     parser.add_argument("--fp-length", type=int, default=1024)
     parser.add_argument("--n-jobs", type=int, default=1)
 
-    parser.add_argument("--use-VAE-embs", action="store_true")
-    parser.add_argument("--no-VAE-embs", dest="use_VAE_embs", action="store_false")
-    parser.set_defaults(use_VAE_embs=True)
-
-    parser.add_argument("--vae-latent-dim", type=int, default=64)
-    parser.add_argument("--vae-int-dim", type=int, default=128)
-    parser.add_argument("--vae-n-layers", type=int, default=2)
-
-    parser.add_argument("--name", type=str, default="run_2")
+    parser.add_argument("--name", type=str, default="test")
     parser.add_argument("--wandb", action="store_true")
 
     return parser

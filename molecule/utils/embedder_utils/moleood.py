@@ -11,15 +11,17 @@ def get_embeddings_from_moleood(
     batch_size: int = 2048,
     device: str = "cpu",
     dataset: str = "DILI",
+    data_dir: str = "data",
     **kwargs,
 ):
     model = MoleOOD(transformer_name, device)
-    dataloader = model.get_dataloader_from_dataset_name(dataset, batch_size)
+    dataloader = model.get_dataloader_from_dataset_name(
+        dataset, batch_size, data_dir=data_dir
+    )
 
     embeddings = []
     for batch_sub, batch_data in dataloader:
         embeddings.append(model(batch_sub, batch_data))
-
 
     return torch.cat(embeddings, dim=0)
 

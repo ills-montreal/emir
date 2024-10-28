@@ -9,7 +9,7 @@ import argparse
 from molecule.utils.tdc_dataset import get_dataset_split
 
 from molecule.utils import MolecularFeatureExtractor
-from molecule.utils.estimator_utils.knife_utils import get_embedders
+from molecule.utils.estimator_utils.estimation_utils import get_embedders
 import tqdm as tqdm
 
 import wandb

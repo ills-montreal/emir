@@ -22,7 +22,7 @@ if __name__ == "__main__":
         "--datasets",
         nargs="+",
         default=[
-            "BindingDB_Ki",
+            "hERG",
         ],
         help="the datasets to preprocess",
     )

@@ -25,7 +25,7 @@ parser.add_argument(
     type=str,
     nargs="+",
     default=[
-        "BindingDB_Kd",
+        "hERG",
     ],
 )
 
@@ -45,6 +45,7 @@ parser.add_argument(
     required=False,
     help="Path to the data folder",
 )
+
 
 def main():
     args = parser.parse_args()
@@ -74,7 +75,7 @@ def main():
             valid_mols = []
             for i, s in enumerate(tqdm(smiles, desc="Generating graphs")):
                 mol = mols[i]
-                #compute molecular weight and limit it under 1000
+                # compute molecular weight and limit it under 1000
                 desc = dm.descriptors.compute_many_descriptors(mol)
                 if desc["mw"] > 1000:
                     continue
@@ -93,9 +94,7 @@ def main():
                 os.makedirs(f"{data_path}")
 
             pre_processed = pd.DataFrame({"smiles": smiles, "mols": mols})
-            dm.to_sdf(
-                pre_processed, f"{data_path}/preprocessed.sdf", mol_column="mols"
-            )
+            dm.to_sdf(pre_processed, f"{data_path}/preprocessed.sdf", mol_column="mols")
             # save the SMILES in a json file
             with open(f"{data_path}/smiles.json", "w") as f:
                 json.dump(smiles, f)

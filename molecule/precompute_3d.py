@@ -38,7 +38,7 @@ def precompute_3d(
     smiles: List[str],
     dataset_name: str = "tox21",
     n_jobs: int = 4,
-    data_path: str = DATA_PATH,
+    data_path: str = "data",
 ) -> Tuple[List[dm.Mol], List[str]]:
     if dataset_name.endswith(".csv"):
         dataset_name = dataset_name.replace(".csv", "")

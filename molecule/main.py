@@ -1,7 +1,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import logging
 
@@ -12,7 +12,7 @@ import datamol as dm
 import wandb
 import yaml
 
-from molecule.utils.estimator_utils.knife_utils import compute_all_mi
+from molecule.utils.estimator_utils.estimation_utils import MI_EstimatorRunner
 from molecule.utils.parser_mol import (
     add_eval_cli_args,
     add_knife_args,
@@ -107,17 +107,7 @@ handler = logging.StreamHandler()
 logger.info("Logger is set.")
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser = add_eval_cli_args(parser)
-    parser = add_knife_args(parser)
-    args = parser.parse_args()
-    if args.wandb:
-        wandb.init(project="Emir")
-
+def update_args(args):
     new_X = []
     for embedder in args.X:
         if not embedder in GROUPED_MODELS:
@@ -125,7 +115,6 @@ def main():
         else:
             new_X += GROUPED_MODELS[embedder]
     args.X = new_X
-
     new_Y = []
     for embedder in args.Y:
         if not embedder in GROUPED_MODELS:
@@ -133,19 +122,14 @@ def main():
         else:
             new_Y += GROUPED_MODELS[embedder]
     args.Y = new_Y
-
     dir_key = "tmp" if args.name is None else args.name
 
     args.out_dir = os.path.join(
         args.out_dir,
         args.dataset,
-        str(args.fp_length),
-        f"{str(args.use_VAE_embs)}_{args.vae_latent_dim}",
         dir_key,
     )
-
     os.makedirs(args.out_dir, exist_ok=True)
-
     with open(os.path.join(args.out_dir, "args.yaml"), "w") as f:
         yaml.dump(vars(args), f)
 
@@ -155,6 +139,22 @@ def main():
     # Update the wandb config with the args specified in the command line
     if args.wandb:
         wandb.config.update(args)
+    return args
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Compute Pairwise reconstruction statistics between embedders",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser = add_eval_cli_args(parser)
+    parser.add_argument("--estimator-config", type=str, default="knife.yaml")
+    parser.add_argument("--estimator", type=str, default="KNIFE")
+    args = parser.parse_args()
+    if args.wandb:
+        wandb.init(project="Emir")
+    args = update_args(args)
+
     smiles_path = f"{args.data_path}/{args.dataset}/smiles.json"
     mol_path = f"{args.data_path}/{args.dataset}/preprocessed.sdf"
 
@@ -169,27 +169,33 @@ def main():
     else:
         mols = None
 
-    all_results = compute_all_mi(
-        args=args,
-        smiles=smiles,
-        mols=mols,
-    )
-    return all_results, args
+    estimator_runner = MI_EstimatorRunner(args=args, smiles=smiles, mols=mols)
+    all_results = estimator_runner()
+    return estimator_runner.metrics, estimator_runner.loss, args
+
+
+def save_loss(loss, out_dir):
+    for model_name in loss.X.unique():
+        model_loss = loss[loss.X == model_name]
+        model_loss.to_csv(
+            os.path.join(out_dir, f"losses/{model_name}.csv"), index=False
+        )
+
+
+def save_metrics(metrics, out_dir):
+    for model_name in metrics.X.unique():
+        model_metrics = metrics[metrics.X == model_name]
+        model_metrics.to_csv(os.path.join(out_dir, f"{model_name}.csv"), index=False)
 
 
 if __name__ == "__main__":
-    df, args = main()
-    max_desc = df.groupby("Y")["I(X->Y)"].max()
-    df["mi_normed"] = df.apply(lambda x: x["I(X->Y)"] / max_desc[x.Y], axis=1)
-    if args.wandb:
-        wandb.log(
-            {
-                "inter_model_std": df.groupby("Y")["I(X->Y)"].std().mean(),
-                "intra_model_std": df.groupby("X")["I(X->Y)"].std().mean(),
-                "inter_model_std_normalized": df.groupby("Y").mi_normed.std().mean(),
-                "intra_model_std_normalized": df.groupby("X").mi_normed.std().mean(),
-            }
-        )
+    metrics, loss, args = main()
 
-        wandb.log({"results": wandb.Table(dataframe=df)})
+    save_loss(loss, args.out_dir)
+    save_metrics(metrics, args.out_dir)
+
+    max_desc = metrics.groupby("Y")["I(Y->X)"].max()
+    metrics["mi_normed"] = metrics.apply(lambda x: x["I(Y->X)"] / max_desc[x.X], axis=1)
+    if args.wandb:
+        wandb.log({"results": wandb.Table(dataframe=metrics)})
         wandb.finish()
