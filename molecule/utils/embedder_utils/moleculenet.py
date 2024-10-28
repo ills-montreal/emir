@@ -9,7 +9,9 @@ import torch
 from tqdm import tqdm
 
 from molecule.models.moleculenet_models import GNN
-from molecule.utils.moleculenet_encoding import mol_to_graph_data_obj_simple
+from molecule.utils.embedder_utils.moleculenet_encoding import (
+    mol_to_graph_data_obj_simple,
+)
 
 
 MODEL_PARAMS = {
@@ -22,6 +24,7 @@ MODEL_PARAMS = {
 
 DATA_PATH = "/export/livia/datasets/datasets/public/molecule/data"
 DATA_PATH = "data" if not os.path.exists(DATA_PATH) else DATA_PATH
+
 
 @torch.no_grad()
 def get_embeddings_from_model_moleculenet(
@@ -36,7 +39,9 @@ def get_embeddings_from_model_moleculenet(
     dataset: Optional[str] = None,
     **kwargs,
 ):
-    graph_input_path = f"{DATA_PATH}/{dataset}/graph_input" if dataset is not None else None
+    graph_input_path = (
+        f"{DATA_PATH}/{dataset}/graph_input" if dataset is not None else None
+    )
     embeddings = []
     molecule_model = GNN(**MODEL_PARAMS).to(device)
     if not path == "":

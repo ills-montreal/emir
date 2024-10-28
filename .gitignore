@@ -185,6 +185,7 @@ molecule/results.csv
 
 *wandb*
 molecule/fig
+molecule/bash_scripts
 molecule/results
 molecule/external_repo/pre-training-via-denoising
 molecule/external_repo/molformer
