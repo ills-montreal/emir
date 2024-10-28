@@ -2,8 +2,6 @@ import os
 import argparse
 from emir.estimators import KNIFEArgs
 
-CLUSTER_PATH = "/export/livia/datasets/datasets/public/molecule/data"
-
 
 def add_eval_cli_args(parser: argparse.ArgumentParser):
     """
@@ -19,7 +17,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--data-path",
         type=str,
-        default=CLUSTER_PATH if os.path.exists(CLUSTER_PATH) else "data",
+        default="data",
     )
 
     parser.add_argument("--n-runs", type=int, default=1)
@@ -73,7 +71,7 @@ def add_eval_cli_args(parser: argparse.ArgumentParser):
     parser.add_argument("--vae-n-layers", type=int, default=2)
 
     parser.add_argument("--name", type=str, default="run_2")
-    parser.add_argument("--wandb" , action="store_true")
+    parser.add_argument("--wandb", action="store_true")
 
     return parser
 
@@ -163,7 +161,7 @@ def add_downstream_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--data-path",
         type=str,
-        default=CLUSTER_PATH if os.path.exists(CLUSTER_PATH) else "data",
+        default="data",
     )
     parser.add_argument("--datasets", type=str, nargs="+", default=["TOX", "ADME"])
     parser.add_argument("--length", type=int, default=1024)
@@ -179,7 +177,6 @@ def add_downstream_args(parser: argparse.ArgumentParser):
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--plot-loss", action="store_true")
     parser.set_defaults(plot_loss=False)
-
 
     parser.add_argument("--config", type=str, default="downstream_config.yaml")
     parser.add_argument("--split-method", type=str, default="random")

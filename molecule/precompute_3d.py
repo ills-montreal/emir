@@ -10,13 +10,6 @@ from utils.descriptors import can_be_2d_input
 import pathos.multiprocessing as mp
 
 
-CLUSTER_PATH = "/export/livia/datasets/datasets/public/molecule/data"
-if os.path.exists(CLUSTER_PATH):
-    DATA_PATH = CLUSTER_PATH
-else:
-    DATA_PATH = "data"
-
-
 def compute_3d(smiles: str):
     if "." in smiles:
         return None
@@ -88,6 +81,7 @@ parser.add_argument("--data-path", type=str, default="data")
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    DATA_PATH = args.data_path
     if args.dataset.endswith(".csv"):
         import pandas as pd
 
