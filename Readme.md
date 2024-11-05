@@ -24,3 +24,8 @@ All directories contain there specific Readme files.
 pip install -e . 
 ```
 
+Cite us
+-
+```
+Coming soon
+```
