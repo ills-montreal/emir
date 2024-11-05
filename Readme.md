@@ -9,7 +9,7 @@ This repository contains the code for the paper: **When is an Embedding Model Mo
 It is divided in three main components:
 1. [emir](emir): Contains the code to estimate the information sufficiency between two models.
 2. [molecule](molecule): Contains the code used for the molecular modeling experiments.
-3. [nlp_embedding](nlp_embedding): Contains the code used for the NLP experiments
+3. [nlp_embeddings](nlp_embeddings): Contains the code used for the NLP experiments
 
 ## Introduction
 
