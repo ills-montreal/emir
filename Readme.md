@@ -1,5 +1,5 @@
 # When is an Embedding Model More Promising than Another?
-**NeurIPS'23**
+**NeurIPS'24**
 
 *Maxime DARRIN\*, Philippe FORMONT\*, Ismail BEN AYED, Jackie Chi Kit CHEUNG, Pablo PIANTANIDA*
 
