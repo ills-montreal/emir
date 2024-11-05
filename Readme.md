@@ -1,6 +1,5 @@
-
-# Emir information sufficiency estimation
-
+# When is an Embedding Model More Promising than Another?
+NeurIPS'23
 
 ## Introduction
 
