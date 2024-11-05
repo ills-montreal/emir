@@ -16,17 +16,10 @@ pip install -e .
 
 ## :file_folder: Data Preprocessing
 Various descriptors use a 3-dimensional representation of the molecules. 
-To generate these representations, we use the [precompute_3D.py](precompute_3D.py) script.
+To generate these representations, and preprocess the datasets, use the script [precompute_.py](preprocess.py).
 ```bash
-python precompute_3D.py --dataset <dataset_name>
+python precompute_molf_descriptors.py --dataset <dataset_name> --descriptors <[optional] molecular descriptors to compute>
 ```
-
-This command will generate a file named "<dataset_name>_3d.sdf" containing the 3D representations of the molecules in the dataset.
-The molecular descriptors can then be computed using the script [precompute_molf_descriptors.py](precompute_molf_descriptors.py), which uses descriptors from the molfeat\cite{} library.
-```bash
-python precompute_molf_descriptors.py --dataset <dataset_name> --descriptors <[optional] descriptor_names>
-```
-Using this script will also preprocess the datasets, removing molecules that cannot be turned into 2D representations for our models.
 
 ## :chart_with_upwards_trend: Information Sufficiency
 

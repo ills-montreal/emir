@@ -6,7 +6,7 @@ import datamol as dm
 import torch
 import argparse
 
-from molecule.utils.evaluation import (
+from molecule.utils.downstream_evaluation import (
     get_dataloaders,
     Feed_forward,
     FFConfig,
@@ -15,7 +15,7 @@ from molecule.utils.evaluation import (
 from molecule.utils.tdc_dataset import get_dataset_split
 
 from molecule.utils import MolecularFeatureExtractor
-from molecule.utils.knife_utils import get_embedders
+from molecule.utils.estimator_utils.estimation_utils import get_embedders
 from tqdm import tqdm
 
 import wandb
@@ -238,7 +238,7 @@ def launch_evaluation(
             "dataset": [dataset],
             "length": [length],
             "metric_test": test_metric,
-            "metric": trainer.best_metric
+            "metric": trainer.best_metric,
         }
     )
     return df_results

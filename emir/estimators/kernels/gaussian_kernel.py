@@ -58,7 +58,7 @@ class GaussianMargKernel(BaseMargKernel):
     def logpdf(self, x):
         assert len(x.shape) == 2 and x.shape[1] == self.d, "x has to have shape [N, d]"
         x = x[:, None, :]
-        w = self.log_softmax(self.weigh, dim=1)
+        w = self.log_softmax(self.weigh)
         y = x - self.means
         logvar = self.logvar
         if self.use_tanh:

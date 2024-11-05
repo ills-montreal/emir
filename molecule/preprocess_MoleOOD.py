@@ -8,7 +8,6 @@ import json
 
 from molecule.external_repo.MoleOOD.OGB.modules.ChemistryProcess import get_substructure
 
-CLUSTER_PATH = "/export/livia/datasets/datasets/public/molecule/data"
 
 def get_result_dir(work_dir):
     result_dir = os.path.join(work_dir, "moleood")
@@ -23,7 +22,7 @@ if __name__ == "__main__":
         "--datasets",
         nargs="+",
         default=[
-            "BindingDB_Ki",
+            "hERG",
         ],
         help="the datasets to preprocess",
     )
@@ -42,7 +41,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data-path",
         type=str,
-        default=CLUSTER_PATH if os.path.exists(CLUSTER_PATH) else "data",
+        default="data",
         help="Path to the data folder",
     )
 
@@ -62,7 +61,9 @@ if __name__ == "__main__":
                 smiles = json.load(f)
 
             file_name = (
-                "substructures.pkl" if args.method == "brics" else "substructures_recap.pkl"
+                "substructures.pkl"
+                if args.method == "brics"
+                else "substructures_recap.pkl"
             )
             file_name = os.path.join(result_dir, file_name)
             substruct_list = []

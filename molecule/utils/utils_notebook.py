@@ -105,7 +105,6 @@ def plot_embeddings(
     with open(f"data/{DATASET}/smiles.json", "r") as f:
         smiles = json.load(f)
 
-
     random_idx = np.random.choice(len(smiles), n_mols, replace=False)
     smiles_cons = [smiles[i] for i in random_idx]
     mols = [dm.to_mol(s) for s in smiles_cons]
@@ -157,9 +156,6 @@ def plot_embeddings(
 def get_MI_df(
     DATASET,
     results_dir_list,
-    LENGTH=1024,
-    use_VAE=True,
-    VAE_dim=64,
     args_to_add=[
         "cond_modes",
         "marg_modes",
@@ -171,7 +167,7 @@ def get_MI_df(
     full_df_MI = []
 
     for results_dir in tqdm(results_dir_list):
-        RESULTS_PATH = f"results/{DATASET}/{LENGTH}/{use_VAE}_{VAE_dim}/{results_dir}"
+        RESULTS_PATH = f"results/{DATASET}/{results_dir}"
 
         with open(RESULTS_PATH + "/args.yaml", "r") as f:
             args = yaml.load(f, Loader=yaml.FullLoader)
@@ -179,7 +175,6 @@ def get_MI_df(
         all_df = []
         for file in os.listdir(RESULTS_PATH):
             if file.endswith(".csv"):
-                file_split = file[:-4].split("_")
                 all_df.append(pd.read_csv(os.path.join(RESULTS_PATH, file)))
         all_df = pd.concat(all_df)
         for arg in args_to_add:
@@ -556,10 +551,10 @@ def get_ranked_df(
                 df_to_rank, alpha=0.05, verbose=False, force_mode="nonparametric"
             ).rankdf
             res.rename(columns={"meanrank": "global_meanrank_metric"}, inplace=True)
-            df_downs.loc[
-                df_downs[split_on] == value, "global_meanrank_metric"
-            ] = df_downs[df_downs[split_on] == value].embedder.map(
-                res["global_meanrank_metric"]
+            df_downs.loc[df_downs[split_on] == value, "global_meanrank_metric"] = (
+                df_downs[df_downs[split_on] == value].embedder.map(
+                    res["global_meanrank_metric"]
+                )
             )
 
     for x in df_downs[COLUMS_SPLIT].unique():
