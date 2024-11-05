@@ -5,10 +5,10 @@ The datasets are imported from the Therapeutic Data Commons (TDC) plateform\cite
 
 ## :clipboard: Installation
 
-To install the required packages, you can use the following command:
+To install the required packages,you need an environement with "pytorch", "pytorch-geometric" and "torch-scatter" already installed, you can use the following command, 
 
 ```bash
-pip install -r requirements.txt # TOCHANGE
+pip install -r requirements.txt
 
 cd external_repo/pre-training-via-denoising
 pip install -e .
