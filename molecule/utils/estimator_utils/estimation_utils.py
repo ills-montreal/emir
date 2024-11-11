@@ -12,6 +12,7 @@ import argparse
 import datamol as dm
 
 from emir.estimators import KNIFEEstimator, KNIFEArgs
+from emir.embedder_evaluator import get_config_cls_estimator
 
 from molecule.models.transformers_models import PIPELINE_CORRESPONDANCY
 from molecule.models.model_paths import get_model_path
@@ -24,12 +25,6 @@ import wandb
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-def get_config_cls_estimator(estimator_config, estimator_name):
-    if estimator_name == "KNIFE":
-        return KNIFEArgs(**estimator_config), KNIFEEstimator
-    raise ValueError(f"Estimator {estimator_name} not found")
 
 
 class EstimatorRunner:
@@ -84,7 +79,7 @@ class EstimatorRunner:
         for i in range(self.args.n_runs):
             estimator = self.init_estimator(X, Y, Y_name)
             mi, m, cond_cent = estimator.eval(X.float(), Y.float())
-            metrics = {"I(Y->X)": mi, "H(X)": m, "H(X|Y)": cond_cent}
+            metrics = {"I(X->Y)": mi, "H(Y)": m, "H(Y|X)": cond_cent}
             loss_metrics = dict(
                 loss=torch.tensor(estimator.recorded_loss, device="cpu"),
             )

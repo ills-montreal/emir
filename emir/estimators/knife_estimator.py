@@ -79,7 +79,7 @@ class KNIFEEstimator:
         fit_only_marginal: Optional[bool] = False,
     ) -> Tuple[float, float, float]:
         """
-        Mutual information between x and y
+        Mutual information between x -> y
 
         :param x: torch.Tensor
         :param y: torch.Tensor
